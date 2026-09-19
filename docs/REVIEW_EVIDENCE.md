@@ -4,9 +4,9 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 
 | Review area | Repository evidence | Live evidence before submission |
 |---|---|---|
-| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-1` closed through real baseline, verifier, and closure consensus; payout withdrawn |
-| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-1`; distinct Wallet B won and withdrew |
-| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | Official docs URLs recorded in finalized `cx-1` evidence graph |
+| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-3` opened through real baseline consensus; contributor lifecycle remains pending |
+| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-3`; Wallet B transaction flow still requires re-unlocked signer |
+| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | `cx-3` baseline finalized as `INSUFFICIENT_EVIDENCE`, then opened for candidate evidence |
 | Substantive validation | Verifier compares six semantic fields; ClosureJudge independently replays outcome/sufficiency | Add a validator disagreement/negative test result |
 | Non-trivial architecture | Registry + EvidenceVerifier + ClosureJudge with finalized cross-contract messages | Smoke passed; addresses below |
 | Failure handling | SOURCE_UNAVAILABLE, retryable baseline, stage deadlines, expiry, stale callbacks, rejected/unrevealed paths | `cx-1` real baseline returned `BASELINE_ALREADY_DECIDABLE` and refunded |
@@ -28,10 +28,10 @@ npm run build: PASS (Next.js 15.5.7)
 ## Deployment
 
 ```text
-Registry: [0x5F3aa55E3314F221b07D004a7e99d33eEAEB2Cd0](https://explorer-studio.genlayer.com/address/0x5F3aa55E3314F221b07D004a7e99d33eEAEB2Cd0) — tx `0x9d96461ed3b6b2f79cb7c3994e5ccd8df44e248edf7995304c7c4cef80072e03`
-EvidenceVerifier: [0xF3332978Bed8506a8e013c81EE8ACF7218568Be1](https://explorer-studio.genlayer.com/address/0xF3332978Bed8506a8e013c81EE8ACF7218568Be1) — tx `0xf4c71701b4e493f2a6f0c093c32844df524dfc3173c16391a486f3bfda7ae04e`
-ClosureJudge: [0x05D69509A10730bae0401850dF148a48De5669C6](https://explorer-studio.genlayer.com/address/0x05D69509A10730bae0401850dF148a48De5669C6) — tx `0x2e64320bae6d4c725146fd78957713db329c4905996c178409f0f870f7451363`; component binding tx `0x807cae32d7b6e66be8aaa572bf2614365d9c176e79dc8967f0bb28192aa28b4a`
-Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Bn1FMLixBpDVoVrZUHdfVnAHaqHZ`.
+Registry: [0xfBed1c827D3A5Ae6F60D3e027df6fe7fa42a00D8](https://explorer-studio.genlayer.com/address/0xfBed1c827D3A5Ae6F60D3e027df6fe7fa42a00D8) — tx `0x4f0f796f0fb20d7f9cb96f1a873038a52786ce59cdc8c6207ed5db6aebd13a88`
+EvidenceVerifier: [0x6c48bbd5860bc366a6dd063Db96dC1801884A8a0](https://explorer-studio.genlayer.com/address/0x6c48bbd5860bc366a6dd063Db96dC1801884A8a0) — tx `0x9fa98d9c5d876f03b786f2d49a5795b81bb6e08143294baad611185e8c575a73`
+ClosureJudge: [0x080e07CDFce588EE1728A9640A3217F358B195A7](https://explorer-studio.genlayer.com/address/0x080e07CDFce588EE1728A9640A3217F358B195A7) — tx `0x677ac90ec69e8b3251b97be4bf7ec308c2374e133fb5d02d759da32c60ed04f1`; component binding tx `0x87efe5c177d5a0ee6d840624f117a870777a0a96d19e2d8e29e9040f001a08db`
+Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Cop7uGjKuGqHj1ygsZ6dydxnDU5o`.
 ```
 
 ## Live demonstration transactions

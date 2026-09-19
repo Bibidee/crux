@@ -39,6 +39,8 @@ The baseline should remain insufficient because the accepted evidence graph only
 
 ## Wallet B — contributor
 
+Current live state: `cx-3` is `OPEN` after finalized baseline consensus. The sponsor transaction is `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`. Bob's commit/reveal and payout transactions remain to be executed with a re-unlocked funded contributor wallet.
+
 Submit the same official documentation URL with the *new* claimed fact:
 
 > `The GenLayer RPC for stable Studionet is https://studio.genlayer.com/api.`

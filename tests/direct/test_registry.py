@@ -377,6 +377,32 @@ def test_winning_case_refunds_other_protocol_blocked_commitment(direct_vm, direc
     assert contract.get_stats()["accounting_balanced"] is True
 
 
+def test_winning_closure_refunds_timely_unrevealed_commitment(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    """Closure makes B's still-timely reveal impossible, so B gets the bond."""
+    warp(direct_vm)
+    contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))
+    cid = open_case(direct_vm, contract, direct_alice)
+    url, fact, salt = "https://example.com/winner", "The winner proves the decisive fact.", "d1" * 32
+    digest = commitment(direct_vm, cid, direct_bob, url, fact, salt)
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    sid_b = contract.commit_evidence(cid, digest)
+    direct_vm.sender, direct_vm.value = direct_charlie, BOND
+    sid_a = contract.commit_evidence(cid, commitment(direct_vm, cid, direct_charlie, url, fact, "d2" * 32))
+    direct_vm.value = 0
+    direct_vm.sender = direct_charlie
+    contract.reveal_evidence(sid_a, url, fact, "d2" * 32)
+    verified = {"status": "VERIFIED", "same_subject": True, "source_allowed": True,
+                "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+                "non_contradictory": True, "basis": "The source is decisive."}
+    contract.record_verification(sid_a, json.dumps(verified))
+    contract.record_closure(sid_a, json.dumps({"outcome": "OUTCOME_A", "sufficient": True,
+                                              "decisive_evidence_ids": [sid_a], "basis": "It closes the rule."}))
+    assert contract.get_submission(sid_b)["status"] == "PROTOCOL_BLOCKED"
+    assert contract.get_credit(addr(direct_bob)) == str(BOND)
+    assert contract.get_credit(addr(direct_alice)) == str(BOUNTY)
+    assert contract.get_stats()["accounting_balanced"] is True
+
+
 def test_queued_reveal_at_expiry_refunds_contributor_but_unrevealed_forfeits(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     warp(direct_vm)
     contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))

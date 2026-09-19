@@ -80,8 +80,10 @@ export default function CaseDetailPage() {
       toast.message("Evidence revealed", { description: "GenLayer will now fetch the source and verify the claim.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForDecision(hash);
       const finalized = await getSubmission(submissionId, true);
-      if (["COMMITTED", "REVEAL_QUEUED"].includes(finalized.status)) throw new Error("Reveal transaction finalized without changing the submission; the saved salt was retained.");
-      removePendingReveal(pending.commitment); setPending(null); setUrl(""); setFact("");
+      if (finalized.status === "COMMITTED") throw new Error("Reveal did not take effect on-chain; the saved salt was retained.");
+      if (["REVEAL_QUEUED", "VERIFICATION_PENDING", "CLOSURE_PENDING", "VERIFIED_NON_CLOSING", "CLOSED_WINNER", "REJECTED", "RETRYABLE_SOURCE", "INCONCLUSIVE", "PROTOCOL_BLOCKED", "STALE", "UNREVEALED"].includes(finalized.status)) {
+        removePendingReveal(pending.commitment); setPending(null); setUrl(""); setFact("");
+      } else throw new Error("Reveal finality could not be confirmed; the saved salt was retained.");
       await refresh(true);
     } catch (e: any) { toast.error(e?.message || "Reveal failed"); }
     finally { setBusy(""); }

@@ -288,7 +288,11 @@ class CruxRegistry(gl.Contract):
         for submission_id in list(case.get("active_submission_ids", [])):
             submission = self._submission(submission_id)
             if submission["status"] in ("COMMITTED", "REVEAL_QUEUED", "VERIFICATION_PENDING", "CLOSURE_PENDING"):
-                submission["status"] = "PROTOCOL_BLOCKED" if submission["status"] != "COMMITTED" else "UNREVEALED"
+                # A closure can make an otherwise timely reveal impossible. Only
+                # commitments whose reveal window was already missed forfeit to
+                # the sponsor; all protocol-blocked work is refunded to its author.
+                timely_commit = submission["status"] == "COMMITTED" and _now() < int(submission["reveal_deadline"])
+                submission["status"] = "PROTOCOL_BLOCKED" if submission["status"] != "COMMITTED" or timely_commit else "UNREVEALED"
                 submission["settled_at"] = _iso()
                 self._release_bond(submission, submission["contributor"] if submission["status"] == "PROTOCOL_BLOCKED" else case["sponsor"])
                 self._save_submission(submission)
@@ -480,7 +484,10 @@ class CruxRegistry(gl.Contract):
         self.reservations[key] = submission_id
         submission.update({"status": "REVEAL_QUEUED", "evidence_url": evidence_url,
                            "claimed_fact": claimed_fact, "evidence_key": key, "revealed_at": _iso(),
-                           "stage_deadline": str(_now() + VERIFY_TIMEOUT)})
+                           # Queue wait is not verification time. The deadline
+                           # starts only when _start_next_adjudication promotes
+                           # this submission to VERIFICATION_PENDING.
+                           "stage_deadline": "0"})
         case.setdefault("adjudication_queue", []).append(submission_id)
         if len(case["adjudication_queue"]) > MAX_QUEUE:
             raise gl.vm.UserError("[EXPECTED] adjudication queue is full")
@@ -635,7 +642,9 @@ class CruxRegistry(gl.Contract):
             self._save_submission(submission)
             self._save_case(case)
             return
-        if submission["status"] in ("REVEAL_QUEUED", "VERIFICATION_PENDING", "CLOSURE_PENDING"):
+        if submission["status"] == "REVEAL_QUEUED":
+            raise gl.vm.UserError("[EXPECTED] queued submission is awaiting adjudication")
+        if submission["status"] in ("VERIFICATION_PENDING", "CLOSURE_PENDING"):
             if _now() < int(submission["stage_deadline"]):
                 raise gl.vm.UserError("[EXPECTED] stage deadline has not passed")
             submission["status"] = "INCONCLUSIVE"

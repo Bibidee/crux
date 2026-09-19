@@ -30,8 +30,8 @@
     "commitTx": "0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739",
     "revealTx": "0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452",
     "verification": "VERIFIED",
-    "closure": "CLOSURE_PENDING",
-    "winner": "",
-    "withdrawTx": ""
+    "closure": "OUTCOME_A",
+    "winner": "0xf883bCE8FcB120F714B147446342D7E4545Bc988",
+    "withdrawTx": "0xdab0bcec9c3b6fd4521454fe50411d8190bc1a8a4317808a498bbccb5014c9c8"
   }
 }

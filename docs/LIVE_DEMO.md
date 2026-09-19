@@ -39,9 +39,9 @@ The baseline should remain insufficient because the accepted evidence graph only
 
 ## Wallet B — contributor
 
-Current live state: `cx-3` is `OPEN` after finalized baseline consensus. Bob's submission `cs-1` is `VERIFIED` and `CLOSURE_PENDING`.
+Current live state: `cx-3` is `CLOSED` with `OUTCOME_A`. Bob's submission `cs-1` is `CLOSED_WINNER`, and the `1100000000000000` attoGEN credit was withdrawn.
 
-Live hashes: create `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`; commit `0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739`; reveal `0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452`. Closure and withdrawal are not claimed until their callbacks finalize.
+Live hashes: create `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`; commit `0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739`; reveal `0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452`; withdrawal `0xdab0bcec9c3b6fd4521454fe50411d8190bc1a8a4317808a498bbccb5014c9c8`.
 
 Submit the same official documentation URL with the *new* claimed fact:
 

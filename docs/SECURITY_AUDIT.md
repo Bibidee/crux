@@ -4,7 +4,7 @@
 
 Start commit: `ff7ece9` (`Polish wallet UX and add live demo`).
 
-This audit covers the Registry, EvidenceVerifier, ClosureJudge, deployment bootstrap, escrow lifecycle, CI and frontend reveal persistence. No production deployment, production configuration change, or push was performed.
+This audit covers the Registry, EvidenceVerifier, ClosureJudge, deployment bootstrap, escrow lifecycle, CI and frontend reveal persistence. The approved remediated deployment was executed on Studionet chain `61999` only.
 
 ## Confirmed findings and fixes
 
@@ -29,7 +29,7 @@ This audit covers the Registry, EvidenceVerifier, ClosureJudge, deployment boots
 
 ## Deployment requirements
 
-The current Studionet deployment is unchanged and therefore does not contain these remediations. An approved future redeployment must use the updated bootstrap sequence in `deploy/deployCrux.ts` on chain `61999` only:
+The finalized Studionet deployment uses the updated bootstrap sequence in `deploy/deployCrux.ts` on chain `61999` only:
 
 1. Deploy Registry unbound with empty child addresses.
 2. Deploy EvidenceVerifier with the Registry address.
@@ -37,10 +37,8 @@ The current Studionet deployment is unchanged and therefore does not contain the
 4. Call the one-time Registry component binding.
 5. Verify final receipts, addresses and callback behavior before updating any frontend configuration.
 
-Existing live contracts remain the previously documented Studionet deployment and must be treated as pre-remediation until that approved deployment occurs.
-
-Read-only verification against the documented Registry on 2026-09-19 confirmed chain `61999`, the documented verifier/judge addresses, `accounting_balanced=true`, `cases_closed=1`, `total_cases=3` and the historical `cx-2` closure. The live `get_stats` response has no `components_configured` field, confirming it is the pre-remediation Registry schema rather than the locally remediated contract. No write transaction was sent during this audit continuation.
+Live verification on 2026-09-19 confirmed the new Registry has `components_configured=true`, `accounting_balanced=true`, `admin_controls=false`, exact verifier/judge bindings, one closed case, zero claimable escrow after withdrawal, and chain ID `61999` at `https://studio.genlayer.com/api`. The two-wallet flow finalized `cx-1` as `OUTCOME_A`; Bob received and withdrew `1100000000000000` attoGEN.
 
 ## Remaining issues
 
-No critical protocol defect remains in the locally tested source. Production readiness is withheld because the live contracts at `deployments/studionet.json:10-13` have not been redeployed and the required live lifecycle evidence has not been re-executed against the remediated bytecode, as prohibited without explicit approval. Required fix: approve the documented secure bootstrap deployment, verify all receipts and addresses, update frontend configuration only after verification, and rerun the two-wallet evidence flow.
+No critical protocol defect remains in the locally tested source or finalized Studionet lifecycle. The frontend is configured for the exact remediated addresses and remains generic injected EIP-1193 through `window.ethereum`. The only evidence-record limitation is that the reveal helper did not capture its transaction hash; the finalized reveal state, closure receipt, withdrawal receipt, explorer addresses and all accounting invariants were independently verified. **READY**.

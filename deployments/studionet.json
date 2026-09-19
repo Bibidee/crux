@@ -5,19 +5,20 @@
   "rpc": "https://studio.genlayer.com/api",
   "explorer": "https://explorer-studio.genlayer.com",
   "frontend": "https://crux-end.vercel.app",
-  "deployedAt": "2026-09-19T01:20:00Z",
-  "source": "Unlocked GenLayer CLI; RPC https://studio.genlayer.com/api; chain 61999",
+  "deployedAt": "2026-09-19T09:10:44Z",
+  "source": "Unlocked GenLayer CLI secure bootstrap; RPC https://studio.genlayer.com/api; chain 61999",
   "contracts": {
-    "verifier": { "address": "0x58eD91e219A96639b30ec23C860217ef9Fc4eCCb", "txHash": "0xd5f5230310f4a28190b549b67da87a67758b4dfeeb602fd4f881c3c1a37d54d3" },
-    "judge": { "address": "0x947503895f34f34FaafF21f2c89C8b0EbCaD46db", "txHash": "0x64f62e82829127fb428d14cbb5fbdec4181927df9655e975fe04a4f8a521ce93" },
-    "registry": { "address": "0x5789b330f90CFBDa2DCBdeF7A66cbA1247Ec9107", "txHash": "0xbbae816edac39005b329a59e715484433404ef8a2ec8203f21fe517626668c3d" }
+    "verifier": { "address": "0xF3332978Bed8506a8e013c81EE8ACF7218568Be1", "txHash": "0xf4c71701b4e493f2a6f0c093c32844df524dfc3173c16391a486f3bfda7ae04e" },
+    "judge": { "address": "0x05D69509A10730bae0401850dF148a48De5669C6", "txHash": "0x2e64320bae6d4c725146fd78957713db329c4905996c178409f0f870f7451363" },
+    "registry": { "address": "0x5F3aa55E3314F221b07D004a7e99d33eEAEB2Cd0", "txHash": "0x9d96461ed3b6b2f79cb7c3994e5ccd8df44e248edf7995304c7c4cef80072e03" },
+    "configureHash": "0x807cae32d7b6e66be8aaa572bf2614365d9c176e79dc8967f0bb28192aa28b4a"
   },
   "liveDemo": {
-    "caseId": "cx-2",
-    "createTx": "0xeb94901ba52c44e9c5d4a493f7735d57971f0324b8612d017ab05377d1697c52",
-    "commitTx": "0x346108cf93f33832c32d7e969c218c3faee9770b50d3d874a79aec625b616836",
-    "revealTx": "0xcdb5620451b71eb275ef0a1adb03ae7781c6b2c410b893ac81ee463dcda915ea",
-    "withdrawTx": "0xad50ec22406c68f51f6e3190a0e9ff73e288001adbbbc71e0a87358d32a5e776",
+    "caseId": "cx-1",
+    "createTx": "0xecfe5c8607598584ae46cb6b436a9466b303c0d3b12e403c22f9c7a135353ddd",
+    "commitTx": "0xd01471e4763252a8938469cdbc267a9a5786948cba940524031cde6c063a9e76",
+    "revealObserved": true,
+    "withdrawTx": "0x269364df7a70e2377a763a2606e3397269897d1b4a20f6fceaf7789c504df777",
     "outcome": "OUTCOME_A",
     "winner": "0xf883bCE8FcB120F714B147446342D7E4545Bc988"
   }

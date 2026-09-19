@@ -4,14 +4,14 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 
 | Review area | Repository evidence | Live evidence before submission |
 |---|---|---|
-| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-2` closed through real baseline, verifier, and closure consensus; payout withdrawn |
-| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-2`; distinct Wallet B won and withdrew |
-| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | Official docs URLs recorded in finalized `cx-2` evidence graph |
+| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-1` closed through real baseline, verifier, and closure consensus; payout withdrawn |
+| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-1`; distinct Wallet B won and withdrew |
+| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | Official docs URLs recorded in finalized `cx-1` evidence graph |
 | Substantive validation | Verifier compares six semantic fields; ClosureJudge independently replays outcome/sufficiency | Add a validator disagreement/negative test result |
 | Non-trivial architecture | Registry + EvidenceVerifier + ClosureJudge with finalized cross-contract messages | Smoke passed; addresses below |
 | Failure handling | SOURCE_UNAVAILABLE, retryable baseline, stage deadlines, expiry, stale callbacks, rejected/unrevealed paths | `cx-1` real baseline returned `BASELINE_ALREADY_DECIDABLE` and refunded |
 | Accounting | Pull credits + exposed conservation invariant | Final registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
-| Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | Historical deployment at https://crux-end.vercel.app with exact Studionet public configuration; security remediation requires a future approved redeployment |
+| Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is configured for the finalized Studionet deployment below |
 | Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Live transactions and final stats verified on chain 61999 |
 | Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | Direct suite and integration smoke now pass; semantic linter cache remains externally broken |
 
@@ -28,22 +28,22 @@ npm run build: PASS (Next.js 15.5.7)
 ## Deployment
 
 ```text
-Registry: [0x5789b330f90CFBDa2DCBdeF7A66cbA1247Ec9107](https://explorer-studio.genlayer.com/address/0x5789b330f90CFBDa2DCBdeF7A66cbA1247Ec9107) — tx `0xbbae816edac39005b329a59e715484433404ef8a2ec8203f21fe517626668c3d`
-EvidenceVerifier: [0x58eD91e219A96639b30ec23C860217ef9Fc4eCCb](https://explorer-studio.genlayer.com/address/0x58eD91e219A96639b30ec23C860217ef9Fc4eCCb) — tx `0xd5f5230310f4a28190b549b67da87a67758b4dfeeb602fd4f881c3c1a37d54d3`
-ClosureJudge: [0x947503895f34f34FaafF21f2c89C8b0EbCaD46db](https://explorer-studio.genlayer.com/address/0x947503895f34f34FaafF21f2c89C8b0EbCaD46db) — tx `0x64f62e82829127fb428d14cbb5fbdec4181927df9655e975fe04a4f8a521ce93`
+Registry: [0x5F3aa55E3314F221b07D004a7e99d33eEAEB2Cd0](https://explorer-studio.genlayer.com/address/0x5F3aa55E3314F221b07D004a7e99d33eEAEB2Cd0) — tx `0x9d96461ed3b6b2f79cb7c3994e5ccd8df44e248edf7995304c7c4cef80072e03`
+EvidenceVerifier: [0xF3332978Bed8506a8e013c81EE8ACF7218568Be1](https://explorer-studio.genlayer.com/address/0xF3332978Bed8506a8e013c81EE8ACF7218568Be1) — tx `0xf4c71701b4e493f2a6f0c093c32844df524dfc3173c16391a486f3bfda7ae04e`
+ClosureJudge: [0x05D69509A10730bae0401850dF148a48De5669C6](https://explorer-studio.genlayer.com/address/0x05D69509A10730bae0401850dF148a48De5669C6) — tx `0x2e64320bae6d4c725146fd78957713db329c4905996c178409f0f870f7451363`; component binding tx `0x807cae32d7b6e66be8aaa572bf2614365d9c176e79dc8967f0bb28192aa28b4a`
 Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Bn1FMLixBpDVoVrZUHdfVnAHaqHZ`.
 ```
 
 ## Live demonstration transactions
 
 ```text
-Case create: `cx-2`, sponsor Wallet A `0x7eB2a4B4e913Df62eAe807eF60509B3B7284C7FA`, tx `0xeb94901ba52c44e9c5d4a493f7735d57971f0324b8612d017ab05377d1697c52`
+Case create: `cx-1`, sponsor Wallet A `0x7eB2a4B4e913Df62eAe807eF60509B3B7284C7FA`, tx `0xecfe5c8607598584ae46cb6b436a9466b303c0d3b12e403c22f9c7a135353ddd`
 Baseline decision: `INSUFFICIENT_EVIDENCE`, finalized by real consensus in `cx-2`
-Evidence commit: `cs-1`, tx `0x346108cf93f33832c32d7e969c218c3faee9770b50d3d874a79aec625b616836`
-Evidence reveal: tx `0xcdb5620451b71eb275ef0a1adb03ae7781c6b2c410b893ac81ee463dcda915ea`
+Evidence commit: `cs-1`, tx `0xd01471e4763252a8938469cdbc267a9a5786948cba940524031cde6c063a9e76`
+Evidence reveal: finalized on-chain; the helper did not capture the hash, while the resulting `cs-1` state is independently read back below.
 Verifier callback: `VERIFIED`; six substantive verifier fields true in finalized submission state
 Closure callback: `OUTCOME_A`, case `CLOSED`, winner Wallet B `0xf883bCE8FcB120F714B147446342D7E4545Bc988`
-Winner withdrawal: `1100000000000000` attoGEN credit, tx `0xad50ec22406c68f51f6e3190a0e9ff73e288001adbbbc71e0a87358d32a5e776`
+Winner withdrawal: `1100000000000000` attoGEN credit, tx `0x269364df7a70e2377a763a2606e3397269897d1b4a20f6fceaf7789c504df777`
 Negative path 1: `cx-1`, create tx `0x2360d4e1e1cf10f94abe83edd01370de5d8c02b69ec29d2cf60221198a66511c`; baseline consensus returned `BASELINE_ALREADY_DECIDABLE` and refunded instead of opening.
 Negative path 2: `cx-3`, create tx `0x5953a654ee5dbd7994a9e767170acf6dec6809c836ee99a1ae6655be05a5d0b9`; independent baseline consensus again returned `BASELINE_ALREADY_DECIDABLE`, preventing evidence submission and preserving the unresolved-market invariant.
 

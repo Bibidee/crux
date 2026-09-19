@@ -59,6 +59,16 @@ A candidate is `VERIFIED` only when all six are true:
 5. `materially_new`
 6. `non_contradictory`
 
+Reveals are accepted independently of another submission's stage. Each case
+maintains at most 40 active commitments and a FIFO adjudication queue. The
+queue head is the only submission sent to the verifier/judge; when it reaches a
+terminal state, the next revealed submission starts. A queued reveal is an
+objective protocol-blocked state, so its bond is returned if the case closes or
+expires before it can run. A sealed `COMMITTED` submission that had a valid
+opportunity but was never revealed remains deliberate non-participation and its
+bond is credited to the sponsor. Active IDs and the pending head are stored in
+the case record, so new writes do not scan unbounded submission history.
+
 ## Closure
 
 `ClosureJudge` receives the accepted graph plus the verified candidate. It does not fetch the web again; source grounding has already occurred in a separate contract. It applies the fixed rule and can return:
@@ -80,5 +90,10 @@ Only A/B closes the case. Insufficient evidence adds the verified candidate to t
 | rejected evidence | sponsor | remains escrowed |
 | commit never revealed | sponsor | remains escrowed |
 | case expires | pending stages settle independently | sponsor credit |
+
+When a different contributor closes the case, unrevealed commitments are
+settled before the winner is finalized: sealed commitments go to the sponsor,
+while revealed queued or pending commitments go back to their contributors.
+Every path marks the submission settled and releases active capacity once.
 
 Credits use pull withdrawals so an external transfer failure cannot interrupt the semantic state transition.

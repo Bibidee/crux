@@ -10,14 +10,14 @@ This audit covers the Registry, EvidenceVerifier, ClosureJudge, deployment boots
 
 | Severity | Finding | Remediation |
 | --- | --- | --- |
-| High | Verifier and judge trusted a caller-supplied Registry address, allowing an arbitrary contract to occupy predictable request IDs and trigger callbacks. | Verifier and judge now bind to an immutable constructor Registry address. Registry uses a one-time deployer bootstrap to bind the two child addresses, then clears the bootstrap authority. Duplicate request IDs remain rejected. |
-| Medium | `SOURCE_UNAVAILABLE` baseline recovery changed status without persisting it. | The retryable state and review are now saved before returning. |
-| Medium | Terminal historical submissions consumed the permanent 40-entry limit. | Capacity is calculated from active `COMMITTED`, `VERIFICATION_PENDING` and `CLOSURE_PENDING` submissions while historical records remain queryable. |
-| High | Multiple evidence packets could be adjudicated against the same evidence graph, allowing stale callback ordering. | Registry now serializes evidence adjudication to one pending verification/closure flow per case; expiry and callback status checks remain authoritative. |
-| High | Closure judged only the post-candidate graph and did not establish that the candidate changed an insufficient graph. | ClosureJudge now evaluates the prior graph and rejects adjudication when it was already decidable. The Registry passes both prior and post-candidate graphs. |
-| Medium | A contributor could commit too near case expiry to have a valid reveal window. | Commit is rejected unless the full reveal timeout fits before `closes_at`. |
-| Medium | Frontend deleted reveal salts before final confirmation. | Pending reveal data is retained until the reveal transaction reaches finality; uncertain or failed transactions keep the salt available. |
-| Low | CI depended on an unavailable GenVM release cache. | CI pins the supported `v0.2.12` runtime used by the contract headers and linter cache. |
+| High | Verifier and judge trusted a caller-supplied Registry address, allowing an arbitrary contract to occupy predictable request IDs and trigger callbacks. Affected: `contracts/evidence_verifier.py:127-144`, `contracts/closure_judge.py:112-128`. | Verifier and judge now bind to an immutable constructor Registry address. Registry uses a one-time deployer bootstrap at `contracts/crux_registry.py:245-256` to bind the two child addresses, then clears the bootstrap authority. Duplicate request IDs remain rejected. |
+| Medium | `SOURCE_UNAVAILABLE` baseline recovery changed status without persisting it. Affected: `contracts/crux_registry.py:340-343`. | The retryable state and review are now saved before returning. |
+| Medium | Terminal historical submissions consumed the permanent 40-entry limit. Affected: `contracts/crux_registry.py:369-376`. | Capacity is calculated from active `COMMITTED`, `VERIFICATION_PENDING` and `CLOSURE_PENDING` submissions while historical records remain queryable. |
+| High | Multiple evidence packets could be adjudicated against the same evidence graph, allowing stale callback ordering. Affected: `contracts/crux_registry.py:414-422`. | Registry now serializes evidence adjudication to one pending verification/closure flow per case; expiry and callback status checks remain authoritative. |
+| High | Closure judged only the post-candidate graph and did not establish that the candidate changed an insufficient graph. Affected: `contracts/closure_judge.py:119-130`, `contracts/crux_registry.py:493-496`. | ClosureJudge now evaluates the prior graph and rejects adjudication when it was already decidable. The Registry passes both prior and post-candidate graphs. |
+| Medium | A contributor could commit too near case expiry to have a valid reveal window. Affected: `contracts/crux_registry.py:369`. | Commit is rejected unless the full reveal timeout fits before `closes_at`. |
+| Medium | Frontend deleted reveal salts before final confirmation. Affected: `frontend/app/cases/[id]/page.tsx:79-80`, `frontend/app/activity/page.tsx:64`. | Pending reveal data is retained until the reveal transaction reaches finality; uncertain or failed transactions keep the salt available. |
+| Low | CI depended on an unavailable GenVM release cache. Affected: `.github/workflows/quality.yml:16-17`. | CI pins the supported `v0.2.12` runtime used by the contract headers and linter cache. |
 
 ## Verification
 
@@ -43,4 +43,4 @@ Read-only verification against the documented Registry on 2026-09-19 confirmed c
 
 ## Remaining issues
 
-No critical protocol defect remains in the locally tested source. Production readiness is withheld because the live contracts have not been redeployed and the required live lifecycle evidence has not been re-executed against the remediated bytecode, as prohibited without explicit approval.
+No critical protocol defect remains in the locally tested source. Production readiness is withheld because the live contracts at `deployments/studionet.json:10-13` have not been redeployed and the required live lifecycle evidence has not been re-executed against the remediated bytecode, as prohibited without explicit approval. Required fix: approve the documented secure bootstrap deployment, verify all receipts and addresses, update frontend configuration only after verification, and rerun the two-wallet evidence flow.

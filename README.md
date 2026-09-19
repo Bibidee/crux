@@ -195,11 +195,11 @@ GenVM web rendering can follow redirects while the currently exposed API does no
 
 ## Release status
 
-The historical Studionet deployment and complete two-wallet evidence flow passed on chain `61999`; the live frontend is [https://crux-end.vercel.app](https://crux-end.vercel.app). Those addresses and transactions are recorded in [`deployments/studionet.json`](deployments/studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md). That deployment predates the security remediation in [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) and must not be treated as remediated or production-ready until an approved redeployment is completed.
+The current remediated Studionet deployment and complete two-wallet evidence flow passed on chain `61999`; the live frontend is [https://crux-end.vercel.app](https://crux-end.vercel.app). Current addresses, transaction evidence and the historical previous-registry flow are recorded in [`deployments/studionet.json`](deployments/studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md).
 
 Deployment set (unlocked CLI, Studionet chain 61999):
 
-- EvidenceVerifier: `0x58eD91e219A96639b30ec23C860217ef9Fc4eCCb`
-- ClosureJudge: `0x947503895f34f34FaafF21f2c89C8b0EbCaD46db`
-- CruxRegistry: `0x5789b330f90CFBDa2DCBdeF7A66cbA1247Ec9107`
+- EvidenceVerifier: `0x9148a71Ad881865FEbF41548d0c77D6d3f836B17`
+- ClosureJudge: `0x216598A7584BF42E2Ce20f1E5B46c9D3603d3d64`
+- CruxRegistry: `0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235`
 - Explorer: [Studionet explorer](https://explorer-studio.genlayer.com)

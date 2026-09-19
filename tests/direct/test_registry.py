@@ -314,3 +314,82 @@ def test_expired_case_refunds_sponsor_and_late_verification_goes_stale(direct_vm
     assert contract.get_submission(sid)["status"] == "STALE"
     assert contract.get_credit(addr(direct_bob)) == str(BOND)
     assert contract.get_stats()["accounting_balanced"] is True
+
+
+def test_two_contributors_can_reveal_while_one_is_pending_and_queue_is_fair(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))
+    cid = open_case(direct_vm, contract, direct_alice)
+    url1, fact1, salt1 = "https://example.com/first", "The first source is admissible but non-closing.", "a1" * 32
+    url2, fact2, salt2 = "https://example.com/second", "The second source is admissible and complementary.", "a2" * 32
+    d1 = commitment(direct_vm, cid, direct_bob, url1, fact1, salt1)
+    d2 = commitment(direct_vm, cid, direct_charlie, url2, fact2, salt2)
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    sid1 = contract.commit_evidence(cid, d1)
+    direct_vm.sender, direct_vm.value = direct_charlie, BOND
+    sid2 = contract.commit_evidence(cid, d2)
+    direct_vm.value = 0
+    direct_vm.sender = direct_bob
+    contract.reveal_evidence(sid1, url1, fact1, salt1)
+    direct_vm.sender = direct_charlie
+    contract.reveal_evidence(sid2, url2, fact2, salt2)
+    assert contract.get_submission(sid1)["status"] == "VERIFICATION_PENDING"
+    assert contract.get_submission(sid2)["status"] == "REVEAL_QUEUED"
+    direct_vm.sender = direct_charlie
+    contract.record_verification(sid1, json.dumps({
+        "status": "SOURCE_UNAVAILABLE", "same_subject": False, "source_allowed": False,
+        "claim_supported": False, "correct_time_scope": False, "materially_new": False,
+        "non_contradictory": False, "basis": "The source was unavailable."
+    }))
+    assert contract.get_credit(addr(direct_bob)) == str(BOND)
+    assert contract.get_submission(sid2)["status"] == "VERIFICATION_PENDING"
+    assert contract.get_stats()["accounting_balanced"] is True
+
+
+def test_winning_case_refunds_other_protocol_blocked_commitment(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))
+    cid = open_case(direct_vm, contract, direct_alice)
+    url1, fact1, salt1 = "https://example.com/winner", "The official source proves the decisive licence permission.", "b1" * 32
+    url2, fact2, salt2 = "https://example.com/queued", "A second contributor committed before closure.", "b2" * 32
+    d1 = commitment(direct_vm, cid, direct_bob, url1, fact1, salt1)
+    d2 = commitment(direct_vm, cid, direct_charlie, url2, fact2, salt2)
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    sid1 = contract.commit_evidence(cid, d1)
+    direct_vm.sender, direct_vm.value = direct_charlie, BOND
+    sid2 = contract.commit_evidence(cid, d2)
+    direct_vm.value = 0
+    direct_vm.sender = direct_bob
+    contract.reveal_evidence(sid1, url1, fact1, salt1)
+    direct_vm.sender = direct_charlie
+    contract.reveal_evidence(sid2, url2, fact2, salt2)
+    direct_vm.sender = direct_charlie
+    verified = {"status": "VERIFIED", "same_subject": True, "source_allowed": True,
+                "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+                "non_contradictory": True, "basis": "The source is decisive."}
+    contract.record_verification(sid1, json.dumps(verified))
+    contract.record_closure(sid1, json.dumps({"outcome": "OUTCOME_A", "sufficient": True,
+                                              "decisive_evidence_ids": [sid1], "basis": "It closes the rule."}))
+    assert contract.get_case(cid)["status"] == "CLOSED"
+    assert contract.get_submission(sid2)["status"] == "PROTOCOL_BLOCKED"
+    assert contract.get_credit(addr(direct_charlie)) == str(BOND)
+    assert contract.get_credit(addr(direct_bob)) == str(BOUNTY + BOND)
+    assert contract.get_stats()["accounting_balanced"] is True
+
+
+def test_queued_reveal_at_expiry_refunds_contributor_but_unrevealed_forfeits(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))
+    cid = open_case(direct_vm, contract, direct_alice)
+    url, fact, salt = "https://example.com/queued-expiry", "A queued source should remain recoverable.", "c1" * 32
+    digest = commitment(direct_vm, cid, direct_bob, url, fact, salt)
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    sid = contract.commit_evidence(cid, digest)
+    direct_vm.value = 0
+    contract.reveal_evidence(sid, url, fact, salt)
+    warp(direct_vm, NOW + 7200)
+    direct_vm.sender = direct_alice
+    contract.expire_case(cid)
+    assert contract.get_submission(sid)["status"] == "PROTOCOL_BLOCKED"
+    assert contract.get_credit(addr(direct_bob)) == str(BOND)
+    assert contract.get_stats()["accounting_balanced"] is True

@@ -6,7 +6,7 @@ import { ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { StatusPill } from "@/components/StatusPill";
 import { EmptyState } from "@/components/EmptyState";
-import { getCase, getSubmissionForCommitment, listSubmissions, REGISTRY_ADDRESS, submitRegistryWrite, waitForDecision, waitForFinalization } from "@/lib/crux";
+import { getCase, getSubmission, getSubmissionForCommitment, listSubmissions, REGISTRY_ADDRESS, submitRegistryWrite, waitForDecision, waitForFinalization } from "@/lib/crux";
 import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
 import { absoluteDate, formatGen, outcomeLabel, shortAddress, timeLeft } from "@/lib/format";
 import { loadPendingReveals, makeCommitment, randomSalt, removePendingReveal, savePendingReveal } from "@/lib/commitment";
@@ -53,16 +53,17 @@ export default function CaseDetailPage() {
       const address = await ensureWallet();
       const salt = randomSalt();
       commitment = await makeCommitment({ registry: REGISTRY_ADDRESS, caseId: item.id, contributor: address, evidenceUrl: url.trim(), claimedFact: fact.trim(), salt });
-      const local: PendingReveal = { caseId: item.id, commitment, evidenceUrl: url.trim(), claimedFact: fact.trim(), salt, createdAt: new Date().toISOString() };
+      const local: PendingReveal = { caseId: item.id, commitment, evidenceUrl: url.trim(), claimedFact: fact.trim(), salt, createdAt: new Date().toISOString(), commitState: "READY" };
       savePendingReveal(local); setPending(local);
       const hash = await submitRegistryWrite(address, { functionName: "commit_evidence", args: [item.id, commitment], value: BigInt(item.bond_atto) });
+      savePendingReveal({ ...local, commitTxHash: hash, commitState: "SUBMITTED" }); setPending({ ...local, commitTxHash: hash, commitState: "SUBMITTED" });
       toast.message("Evidence committed", { description: "Waiting for the commitment to settle before reveal.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForFinalization(hash);
+      savePendingReveal({ ...local, commitTxHash: hash, commitState: "FINALIZED" }); setPending({ ...local, commitTxHash: hash, commitState: "FINALIZED" });
       await refresh(false);
       toast.success("Commitment finalised", { description: "Reveal with the second signature to start verification." });
     } catch (e: any) {
-      if (commitment) { removePendingReveal(commitment); setPending(null); }
-      toast.error(e?.message || "Commit failed");
+      toast.error(e?.message || "Commit did not finalize. The sealed evidence remains saved so you can reconcile or retry safely.");
     } finally { setBusy(""); }
   }
 
@@ -75,8 +76,11 @@ export default function CaseDetailPage() {
       if (!submissionId) submissionId = await getSubmissionForCommitment(pending.commitment, true);
       if (!submissionId) throw new Error("Commitment is not final yet. Try reveal again in a moment.");
       const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, pending.evidenceUrl, pending.claimedFact, pending.salt] });
+      savePendingReveal({ ...pending, revealTxHash: hash, revealState: "SUBMITTED" }); setPending({ ...pending, revealTxHash: hash, revealState: "SUBMITTED" });
       toast.message("Evidence revealed", { description: "GenLayer will now fetch the source and verify the claim.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForDecision(hash);
+      const finalized = await getSubmission(submissionId, true);
+      if (["COMMITTED", "REVEAL_QUEUED"].includes(finalized.status)) throw new Error("Reveal transaction finalized without changing the submission; the saved salt was retained.");
       removePendingReveal(pending.commitment); setPending(null); setUrl(""); setFact("");
       await refresh(true);
     } catch (e: any) { toast.error(e?.message || "Reveal failed"); }

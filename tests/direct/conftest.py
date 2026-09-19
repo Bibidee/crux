@@ -2,6 +2,9 @@ from datetime import datetime, timezone
 import os
 import tempfile
 import sys
+from pathlib import Path
+from typing import Any, Callable
+import pytest
 
 # gltest 0.29.2 injects calldata through fd 0 and immediately unlinks the
 # backing tempfile. Windows refuses to unlink an open file, so the upstream
@@ -51,6 +54,21 @@ try:
     _loader._inject_message_to_fd0 = _windows_safe_inject_message_to_fd0
 except ImportError:
     pass
+
+# gltest-direct otherwise follows GitHub's latest release, which currently
+# resolves to an unavailable rc asset. The contracts declare the v0.2.12 SDK
+# hash and this official release contains the matching runner artifact.
+from gltest.direct.loader import deploy_contract
+
+
+@pytest.fixture
+def direct_deploy(direct_vm) -> Callable[..., Any]:
+    def _deploy(contract_path: str, *args: Any, **kwargs: Any) -> Any:
+        path = Path(contract_path)
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        return deploy_contract(path, direct_vm, *args, sdk_version="v0.2.12", **kwargs)
+    return _deploy
 
 NOW = 2_000_000_000
 

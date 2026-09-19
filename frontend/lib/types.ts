@@ -74,4 +74,8 @@ export type PendingReveal = {
   claimedFact: string;
   salt: string;
   createdAt: string;
+  commitTxHash?: string;
+  commitState?: "READY" | "SUBMITTED" | "FINALIZED";
+  revealTxHash?: string;
+  revealState?: "SUBMITTED" | "FINALIZED";
 };

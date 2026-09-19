@@ -13,6 +13,7 @@ MAX_BOUNTY = 10 * 10 ** 18
 MIN_BOND = 10 ** 14
 MAX_CASES_PAGE = 24
 MAX_SUBMISSIONS = 40
+MAX_QUEUE = 40
 MAX_BASELINE = 3
 MAX_TITLE = 100
 MAX_QUESTION = 1800
@@ -272,6 +273,56 @@ class CruxRegistry(gl.Contract):
         if key and key in self.reservations and self.reservations[key] == submission["id"]:
             self.reservations[key] = ""
 
+    def _remove_active(self, case: dict, submission_id: str) -> None:
+        active = case.get("active_submission_ids", [])
+        if submission_id in active:
+            active.remove(submission_id)
+            case["active_submission_ids"] = active
+            case["active_submissions"] = len(active)
+        queue = case.get("adjudication_queue", [])
+        if submission_id in queue:
+            queue.remove(submission_id)
+            case["adjudication_queue"] = queue
+
+    def _settle_blocked_active(self, case: dict, winner_case: bool = False) -> None:
+        for submission_id in list(case.get("active_submission_ids", [])):
+            submission = self._submission(submission_id)
+            if submission["status"] in ("COMMITTED", "REVEAL_QUEUED", "VERIFICATION_PENDING", "CLOSURE_PENDING"):
+                submission["status"] = "PROTOCOL_BLOCKED" if submission["status"] != "COMMITTED" else "UNREVEALED"
+                submission["settled_at"] = _iso()
+                self._release_bond(submission, submission["contributor"] if submission["status"] == "PROTOCOL_BLOCKED" else case["sponsor"])
+                self._save_submission(submission)
+            self._remove_active(case, submission_id)
+        case["pending_submission"] = ""
+        case["adjudication_queue"] = []
+
+    def _start_next_adjudication(self, case: dict) -> None:
+        if case.get("pending_submission") or case["status"] != "OPEN":
+            return
+        queue = case.get("adjudication_queue", [])
+        if not queue:
+            return
+        submission_id = queue[0]
+        submission = self._submission(submission_id)
+        if submission["status"] != "REVEAL_QUEUED":
+            queue.pop(0)
+            case["adjudication_queue"] = queue
+            self._start_next_adjudication(case)
+            return
+        submission["status"] = "VERIFICATION_PENDING"
+        submission["stage_deadline"] = str(_now() + VERIFY_TIMEOUT)
+        case["pending_submission"] = submission_id
+        self._save_submission(submission)
+        self._save_case(case)
+        candidate = {"id": submission_id, "url": submission["evidence_url"],
+                     "fact": submission["claimed_fact"], "kind": "CONTRIBUTED"}
+        verifier = gl.get_contract_at(Address(self.verifier_address))
+        verifier.emit(on="finalized").verify_evidence(
+            submission_id, str(gl.message.contract_address), case["question"], case["decision_rule"],
+            case["source_policy"], _json(case["accepted_evidence"]), submission["evidence_url"],
+            submission["claimed_fact"]
+        )
+
     def _accounting_ok(self) -> bool:
         return int(self.total_deposited) == (
             int(self.case_escrow) + int(self.bond_escrow)
@@ -308,7 +359,9 @@ class CruxRegistry(gl.Contract):
             "remaining_bounty_atto": str(bounty), "bond_atto": str(bond),
             "status": "BASELINE_PENDING", "created_at": _iso(), "closes_at": str(int(closes_at)),
             "baseline_deadline": str(_now() + BASELINE_TIMEOUT), "baseline_review": None,
-            "accepted_evidence": baseline, "submission_ids": [], "winner": "", "final_outcome": "",
+            "accepted_evidence": baseline, "submission_ids": [], "active_submission_ids": [],
+            "active_submissions": 0, "adjudication_queue": [], "pending_submission": "",
+            "winner": "", "final_outcome": "",
             "closed_at": "", "closing_submission": "",
         }
         self._save_case(case)
@@ -368,12 +421,7 @@ class CruxRegistry(gl.Contract):
         case = self._case(case_id)
         if case["status"] != "OPEN" or _now() + REVEAL_TIMEOUT >= int(case["closes_at"]):
             raise gl.vm.UserError("[EXPECTED] case is not open")
-        active_submission_count = sum(
-            1 for submission_id in case["submission_ids"]
-            if self._submission(submission_id)["status"] in
-            ("COMMITTED", "VERIFICATION_PENDING", "CLOSURE_PENDING")
-        )
-        if active_submission_count >= MAX_SUBMISSIONS:
+        if int(case.get("active_submissions", 0)) >= MAX_SUBMISSIONS:
             raise gl.vm.UserError("[EXPECTED] case submission limit reached")
         contributor = str(gl.message.sender_address)
         if contributor.lower() == case["sponsor"].lower():
@@ -399,6 +447,8 @@ class CruxRegistry(gl.Contract):
         self.commitment_index[commitment] = submission_id
         self.submission_ids.append(submission_id)
         case["submission_ids"].append(submission_id)
+        case.setdefault("active_submission_ids", []).append(submission_id)
+        case["active_submissions"] = len(case["active_submission_ids"])
         self._save_case(case)
         self.total_deposited = u256(int(self.total_deposited) + bond)
         self.bond_escrow = u256(int(self.bond_escrow) + bond)
@@ -414,10 +464,6 @@ class CruxRegistry(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] reveal is not available")
         if case["status"] != "OPEN" or _now() >= int(case["closes_at"]):
             raise gl.vm.UserError("[EXPECTED] case is no longer open")
-        for existing_id in case["submission_ids"]:
-            existing = self._submission(existing_id)
-            if existing["status"] in ("VERIFICATION_PENDING", "CLOSURE_PENDING"):
-                raise gl.vm.UserError("[EXPECTED] another evidence adjudication is already pending")
         evidence_url = _text(evidence_url, "evidence url", MAX_URL, 8)
         claimed_fact = _text(claimed_fact, "claimed fact", MAX_FACT, 8)
         if not evidence_url.startswith("https://"):
@@ -432,20 +478,24 @@ class CruxRegistry(gl.Contract):
         if key in self.reservations and self.reservations[key]:
             raise gl.vm.UserError("[EXPECTED] this evidence packet is already reserved or evaluated")
         self.reservations[key] = submission_id
-        submission.update({"status": "VERIFICATION_PENDING", "evidence_url": evidence_url,
+        submission.update({"status": "REVEAL_QUEUED", "evidence_url": evidence_url,
                            "claimed_fact": claimed_fact, "evidence_key": key, "revealed_at": _iso(),
                            "stage_deadline": str(_now() + VERIFY_TIMEOUT)})
+        case.setdefault("adjudication_queue", []).append(submission_id)
+        if len(case["adjudication_queue"]) > MAX_QUEUE:
+            raise gl.vm.UserError("[EXPECTED] adjudication queue is full")
         self._save_submission(submission)
-        verifier = gl.get_contract_at(Address(self.verifier_address))
-        verifier.emit(on="finalized").verify_evidence(
-            submission_id, str(gl.message.contract_address), case["question"], case["decision_rule"],
-            case["source_policy"], _json(case["accepted_evidence"]), evidence_url, claimed_fact
-        )
+        self._save_case(case)
+        self._start_next_adjudication(case)
 
     @gl.public.write
     def record_verification(self, submission_id: str, verification_json: str) -> None:
         self._verifier_only()
         submission = self._submission(submission_id)
+        if submission["status"] == "PROTOCOL_BLOCKED":
+            submission["status"] = "STALE"
+            self._save_submission(submission)
+            return
         if submission["status"] != "VERIFICATION_PENDING":
             raise gl.vm.UserError("[EXPECTED] verification callback is not pending")
         case = self._case(submission["case_id"])
@@ -463,7 +513,11 @@ class CruxRegistry(gl.Contract):
             submission["settled_at"] = _iso()
             self._release_bond(submission, submission["contributor"])
             self._release_reservation(submission)
+            case["pending_submission"] = ""
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
+            self._save_case(case)
+            self._start_next_adjudication(case)
             return
 
         if status == "SOURCE_UNAVAILABLE":
@@ -472,7 +526,11 @@ class CruxRegistry(gl.Contract):
             self.retryable_submissions = u256(int(self.retryable_submissions) + 1)
             self._release_bond(submission, submission["contributor"])
             self._release_reservation(submission)
+            case["pending_submission"] = ""
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
+            self._save_case(case)
+            self._start_next_adjudication(case)
             return
 
         if status == "REJECTED":
@@ -480,7 +538,11 @@ class CruxRegistry(gl.Contract):
             submission["settled_at"] = _iso()
             self.rejected_submissions = u256(int(self.rejected_submissions) + 1)
             self._release_bond(submission, case["sponsor"])
+            case["pending_submission"] = ""
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
+            self._save_case(case)
+            self._start_next_adjudication(case)
             return
 
         submission["status"] = "CLOSURE_PENDING"
@@ -499,6 +561,8 @@ class CruxRegistry(gl.Contract):
     def record_closure(self, submission_id: str, closure_json: str) -> None:
         self._judge_only()
         submission = self._submission(submission_id)
+        if submission["status"] == "PROTOCOL_BLOCKED":
+            return
         if submission["status"] != "CLOSURE_PENDING":
             raise gl.vm.UserError("[EXPECTED] closure callback is not pending")
         case = self._case(submission["case_id"])
@@ -516,7 +580,11 @@ class CruxRegistry(gl.Contract):
             submission["settled_at"] = _iso()
             self._release_bond(submission, submission["contributor"])
             self._release_reservation(submission)
+            case["pending_submission"] = ""
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
+            self._save_case(case)
+            self._start_next_adjudication(case)
             return
 
         candidate = {"id": submission_id, "url": submission["evidence_url"],
@@ -528,8 +596,11 @@ class CruxRegistry(gl.Contract):
             submission["settled_at"] = _iso()
             self.verified_non_closing = u256(int(self.verified_non_closing) + 1)
             self._release_bond(submission, submission["contributor"])
+            case["pending_submission"] = ""
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
             self._save_case(case)
+            self._start_next_adjudication(case)
             return
 
         bounty = int(case["remaining_bounty_atto"])
@@ -541,10 +612,13 @@ class CruxRegistry(gl.Contract):
         submission["status"] = "CLOSED_WINNER"
         submission["reward_atto"] = str(bounty)
         submission["settled_at"] = _iso()
+        self._remove_active(case, submission_id)
+        self._settle_blocked_active(case)
         case.update({"remaining_bounty_atto": "0", "status": "CLOSED", "winner": submission["contributor"],
                      "final_outcome": outcome, "closing_submission": submission_id, "closed_at": _iso()})
         self.cases_closed = u256(int(self.cases_closed) + 1)
         self._save_submission(submission)
+        self._remove_active(case, submission_id)
         self._save_case(case)
 
     @gl.public.write
@@ -557,16 +631,23 @@ class CruxRegistry(gl.Contract):
             submission["status"] = "UNREVEALED"
             submission["settled_at"] = _iso()
             self._release_bond(submission, case["sponsor"])
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
+            self._save_case(case)
             return
-        if submission["status"] in ("VERIFICATION_PENDING", "CLOSURE_PENDING"):
+        if submission["status"] in ("REVEAL_QUEUED", "VERIFICATION_PENDING", "CLOSURE_PENDING"):
             if _now() < int(submission["stage_deadline"]):
                 raise gl.vm.UserError("[EXPECTED] stage deadline has not passed")
             submission["status"] = "INCONCLUSIVE"
             submission["settled_at"] = _iso()
             self._release_bond(submission, submission["contributor"])
             self._release_reservation(submission)
+            if case.get("pending_submission") == submission_id:
+                case["pending_submission"] = ""
+            self._remove_active(case, submission_id)
             self._save_submission(submission)
+            self._save_case(case)
+            self._start_next_adjudication(case)
             return
         raise gl.vm.UserError("[EXPECTED] submission is already settled")
 
@@ -576,6 +657,7 @@ class CruxRegistry(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] case escrow already released")
         self.case_escrow = u256(int(self.case_escrow) - bounty)
         self._credit(case["sponsor"], bounty)
+        self._settle_blocked_active(case)
         case.update({"remaining_bounty_atto": "0", "status": status, "closed_at": _iso()})
         self._save_case(case)
 

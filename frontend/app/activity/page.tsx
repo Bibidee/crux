@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
 import { formatGen, shortAddress } from "@/lib/format";
-import { getCredit, getSubmissionForCommitment, listCases, listSubmissions, submitRegistryWrite, waitForDecision } from "@/lib/crux";
+import { getCredit, getSubmission, getSubmissionForCommitment, listCases, listSubmissions, submitRegistryWrite, waitForDecision } from "@/lib/crux";
 import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
-import { loadPendingReveals, removePendingReveal } from "@/lib/commitment";
+import { loadPendingReveals, removePendingReveal, savePendingReveal } from "@/lib/commitment";
 import type { PendingReveal, Submission } from "@/lib/types";
 import { TransactionNotice } from "@/components/TransactionNotice";
 
@@ -61,8 +61,12 @@ export default function ActivityPage() {
       if (!submissionId) submissionId = await getSubmissionForCommitment(item.commitment, true);
       if (!submissionId) throw new Error("Commitment is not visible yet. Wait for finality and try again.");
       const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, item.evidenceUrl, item.claimedFact, item.salt] });
-      setPhase("Reveal submitted — waiting for verifier consensus…"); toast.message("Reveal submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash); removePendingReveal(item.commitment); await refresh(); setPhase("Reveal finalized; verifier callback is queued.");
-    } catch (e: any) { setPhase(e?.message || "Reveal failed"); toast.error(e?.message || "Reveal failed"); }
+      savePendingReveal({ ...item, revealTxHash: hash, revealState: "SUBMITTED" });
+      setPhase("Reveal submitted — waiting for verifier consensus…"); toast.message("Reveal submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash);
+      const finalized = await getSubmission(submissionId, true);
+      if (["COMMITTED", "REVEAL_QUEUED"].includes(finalized.status)) throw new Error("Reveal did not change the on-chain submission; the saved salt was retained.");
+      removePendingReveal(item.commitment); await refresh(); setPhase("Reveal finalized; verifier callback is queued.");
+    } catch (e: any) { setPhase(e?.message || "Reveal failed; saved salt retained"); toast.error(e?.message || "Reveal failed; saved salt retained"); }
     finally { setBusy(""); }
   }
 

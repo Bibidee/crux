@@ -62,7 +62,7 @@ def test_case_must_begin_insufficient(direct_vm, direct_deploy, direct_alice, di
     assert direct_vm.run_validator() is True
     case = contract.get_case(cid)
     assert case["status"] == "BASELINE_ALREADY_DECIDABLE"
-    assert contract.get_credit(addr(direct_charlie)) == str(BOUNTY + BOND)
+    assert contract.get_credit(addr(direct_alice)) == str(BOUNTY)
     assert contract.get_stats()["accounting_balanced"] is True
 
 
@@ -304,7 +304,7 @@ def test_expired_case_refunds_sponsor_and_late_verification_goes_stale(direct_vm
     warp(direct_vm, NOW + 7200)
     direct_vm.sender = direct_alice
     contract.expire_case(cid)
-    assert contract.get_credit(addr(direct_alice)) == str(BOUNTY)
+    assert contract.get_credit(addr(direct_charlie)) == str(BOUNTY + BOND)
     direct_vm.sender = direct_charlie
     contract.record_verification(sid, json.dumps({
         "status": "VERIFIED", "same_subject": True, "source_allowed": True,

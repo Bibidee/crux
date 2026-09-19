@@ -36,5 +36,23 @@
     "closure": "OUTCOME_A",
     "winner": "0xf883bCE8FcB120F714B147446342D7E4545Bc988",
     "withdrawTx": "0xdab0bcec9c3b6fd4521454fe50411d8190bc1a8a4317808a498bbccb5014c9c8"
+  },
+  "liveEvidence": {
+    "deployment": "current-registry",
+    "caseId": "cx-6",
+    "createTx": "0x4cc094fe2260f0afb42e812409d6af89a4addb00df8d07d5e796cfab19e4ee0b",
+    "baseline": "INSUFFICIENT_EVIDENCE",
+    "commitTx": "0xf8c3d7b1c65544962a08d95498ec4e39ca05d979ea4f18d493483688a55732a7",
+    "submissionId": "cs-2",
+    "revealTx": "0x4f20b89bd684850d34b5a5c4a69f1f1ac432014bdf9d8c1eb30fbc524a8c3d21",
+    "verification": "VERIFIED",
+    "closure": "OUTCOME_A",
+    "winner": "0x2cd419603eBa593074653930Ddc4073d4FD8fc60",
+    "withdrawTx": "0xb333d885c8112685bbd617fa3bfbf07fced200b1f4bfcdff00e1dd94d2c568f1",
+    "negativePath": {
+      "submissionId": "cs-1",
+      "revealTx": "0x3722a87e5b53573f16b6ea317184edfa320667e96afc4406a86f31fd5b43fd69",
+      "result": "REJECTED_INVALID_SALT"
+    }
   }
 }

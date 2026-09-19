@@ -39,11 +39,7 @@ The baseline should remain insufficient because the accepted evidence graph only
 
 ## Wallet B — contributor
 
-Current live state: `cx-3` is `CLOSED` with `OUTCOME_A`. Bob's submission `cs-1` is `CLOSED_WINNER`, and the `1100000000000000` attoGEN credit was withdrawn.
-
-Live hashes: create `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`; commit `0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739`; reveal `0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452`; withdrawal `0xdab0bcec9c3b6fd4521454fe50411d8190bc1a8a4317808a498bbccb5014c9c8`.
-
-Submit the same official documentation URL with the *new* claimed fact:
+Current live state: `cx-6` is `CLOSED` with `OUTCOME_A`. Bob submission `cs-2` is `CLOSED_WINNER`, and the `1000000000000000` attoGEN credit was withdrawn.\r\n\r\nLive hashes: create `0x4cc094fe2260f0afb42e812409d6af89a4addb00df8d07d5e796cfab19e4ee0b`; commit `0xf8c3d7b1c65544962a08d95498ec4e39ca05d979ea4f18d493483688a55732a7`; reveal `0x4f20b89bd684850d34b5a5c4a69f1f1ac432014bdf9d8c1eb30fbc524a8c3d21`; withdrawal `0xb333d885c8112685bbd617fa3bfbf07fced200b1f4bfcdff00e1dd94d2c568f1`.\r\n\r\nSubmit the same official documentation URL with the *new* claimed fact:
 
 > `The GenLayer RPC for stable Studionet is https://studio.genlayer.com/api.`
 
@@ -65,3 +61,4 @@ Run at least two additional cases/submissions and preserve explorer links:
 ## Release evidence to save
 
 Update `deployments/studionet.json` and `docs/REVIEW_EVIDENCE.md` with exact addresses and transaction hashes. The README should link to the deployed app and explorer. Never write “tested” or “verified live” without those artifacts.
+

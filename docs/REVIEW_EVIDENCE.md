@@ -4,14 +4,14 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 
 | Review area | Repository evidence | Live evidence before submission |
 |---|---|---|
-| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-3` closed through real baseline, verifier, closure consensus; payout withdrawn |
-| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-3`; Wallet B won and withdrew |
-| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | `cx-3` baseline finalized as `INSUFFICIENT_EVIDENCE`, then opened for candidate evidence |
+| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-6` closed through real baseline, verifier, closure consensus; payout withdrawn |
+| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-6`; Wallet B won and withdrew |
+| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | `cx-6` baseline finalized as `INSUFFICIENT_EVIDENCE`, then opened for candidate evidence |
 | Substantive validation | Verifier compares six semantic fields; ClosureJudge independently replays outcome/sufficiency | Add a validator disagreement/negative test result |
 | Non-trivial architecture | Registry + EvidenceVerifier + ClosureJudge with finalized cross-contract messages | Smoke passed; addresses below |
 | Failure handling | SOURCE_UNAVAILABLE, retryable baseline, stage deadlines, expiry, stale callbacks, rejected/unrevealed paths | `cx-1` real baseline returned `BASELINE_ALREADY_DECIDABLE` and refunded |
 | Accounting | Pull credits + exposed conservation invariant | Final registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
-| Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is configured for the finalized Studionet deployment below |
+| Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is live, but its current public build still points at the prior registry and requires republishing |
 | Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Live transactions and final stats verified on chain 61999 |
 | Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | Latest CI: 3 lints, 22 direct tests, typecheck and build pass; follow-up source is not live |
 
@@ -28,9 +28,9 @@ npm run build: PASS (Next.js 15.5.7)
 ## Deployment
 
 ```text
-Registry: [0xfBed1c827D3A5Ae6F60D3e027df6fe7fa42a00D8](https://explorer-studio.genlayer.com/address/0xfBed1c827D3A5Ae6F60D3e027df6fe7fa42a00D8) — tx `0x4f0f796f0fb20d7f9cb96f1a873038a52786ce59cdc8c6207ed5db6aebd13a88`
-EvidenceVerifier: [0x6c48bbd5860bc366a6dd063Db96dC1801884A8a0](https://explorer-studio.genlayer.com/address/0x6c48bbd5860bc366a6dd063Db96dC1801884A8a0) — tx `0x9fa98d9c5d876f03b786f2d49a5795b81bb6e08143294baad611185e8c575a73`
-ClosureJudge: [0x080e07CDFce588EE1728A9640A3217F358B195A7](https://explorer-studio.genlayer.com/address/0x080e07CDFce588EE1728A9640A3217F358B195A7) — tx `0x677ac90ec69e8b3251b97be4bf7ec308c2374e133fb5d02d759da32c60ed04f1`; component binding tx `0x87efe5c177d5a0ee6d840624f117a870777a0a96d19e2d8e29e9040f001a08db`
+Registry: [0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235) — tx `0x11cad9b0ffa8b74568994cb2b1db7abd67a5b044408414b18df65dd5cca94ee3`
+EvidenceVerifier: [0x9148a71Ad881865FEbF41548d0c77D6d3f836B17](https://explorer-studio.genlayer.com/address/0x9148a71Ad881865FEbF41548d0c77D6d3f836B17) — tx `0x72c7db89774e8ee7407cf6909e4e6ff147273a8d35a013d7aa93aa7152ddfe6a`
+ClosureJudge: [0x216598A7584BF42E2Ce20f1E5B46c9D3603d3d64](https://explorer-studio.genlayer.com/address/0x216598A7584BF42E2Ce20f1E5B46c9D3603d3d64) — tx `0x34775a3c8fe8e0d312aa7cca486891d2d96297e0aa43ad5ad6fa9553170caef1`; component binding tx `0xe96a03676f911372ccb6997dfd0dc0da7f0c493e22285a08ff73374c86f0b4e9`
 Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Cop7uGjKuGqHj1ygsZ6dydxnDU5o`.
 ```
 
@@ -51,3 +51,4 @@ Negative path 2: `cx-3`, create tx `0x5953a654ee5dbd7994a9e767170acf6dec6809c836
 
 Explorer links use `https://explorer-studio.genlayer.com/tx/<hash>` and the Registry address link above.
 ```
+

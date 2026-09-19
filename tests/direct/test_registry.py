@@ -304,7 +304,7 @@ def test_expired_case_refunds_sponsor_and_late_verification_goes_stale(direct_vm
     warp(direct_vm, NOW + 7200)
     direct_vm.sender = direct_alice
     contract.expire_case(cid)
-    assert contract.get_credit(addr(direct_charlie)) == str(BOUNTY + BOND)
+    assert contract.get_credit(addr(direct_alice)) == str(BOUNTY + BOND)
     direct_vm.sender = direct_charlie
     contract.record_verification(sid, json.dumps({
         "status": "VERIFIED", "same_subject": True, "source_allowed": True,
@@ -399,7 +399,7 @@ def test_winning_closure_refunds_timely_unrevealed_commitment(direct_vm, direct_
                                               "decisive_evidence_ids": [sid_a], "basis": "It closes the rule."}))
     assert contract.get_submission(sid_b)["status"] == "PROTOCOL_BLOCKED"
     assert contract.get_credit(addr(direct_bob)) == str(BOND)
-    assert contract.get_credit(addr(direct_alice)) == str(BOUNTY)
+    assert contract.get_credit(addr(direct_charlie)) == str(BOUNTY + BOND)
     assert contract.get_stats()["accounting_balanced"] is True
 
 

@@ -1,0 +1,24 @@
+{
+  "product": "Crux",
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "explorer": "https://explorer-studio.genlayer.com",
+  "frontend": "https://crux-end.vercel.app",
+  "deployedAt": "2026-09-19T01:20:00Z",
+  "source": "Unlocked GenLayer CLI; RPC https://studio.genlayer.com/api; chain 61999",
+  "contracts": {
+    "verifier": { "address": "0x58eD91e219A96639b30ec23C860217ef9Fc4eCCb", "txHash": "0xd5f5230310f4a28190b549b67da87a67758b4dfeeb602fd4f881c3c1a37d54d3" },
+    "judge": { "address": "0x947503895f34f34FaafF21f2c89C8b0EbCaD46db", "txHash": "0x64f62e82829127fb428d14cbb5fbdec4181927df9655e975fe04a4f8a521ce93" },
+    "registry": { "address": "0x5789b330f90CFBDa2DCBdeF7A66cbA1247Ec9107", "txHash": "0xbbae816edac39005b329a59e715484433404ef8a2ec8203f21fe517626668c3d" }
+  },
+  "liveDemo": {
+    "caseId": "cx-2",
+    "createTx": "0xeb94901ba52c44e9c5d4a493f7735d57971f0324b8612d017ab05377d1697c52",
+    "commitTx": "0x346108cf93f33832c32d7e969c218c3faee9770b50d3d874a79aec625b616836",
+    "revealTx": "0xcdb5620451b71eb275ef0a1adb03ae7781c6b2c410b893ac81ee463dcda915ea",
+    "withdrawTx": "0xad50ec22406c68f51f6e3190a0e9ff73e288001adbbbc71e0a87358d32a5e776",
+    "outcome": "OUTCOME_A",
+    "winner": "0xf883bCE8FcB120F714B147446342D7E4545Bc988"
+  }
+}

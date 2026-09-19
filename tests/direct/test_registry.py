@@ -62,7 +62,7 @@ def test_case_must_begin_insufficient(direct_vm, direct_deploy, direct_alice, di
     assert direct_vm.run_validator() is True
     case = contract.get_case(cid)
     assert case["status"] == "BASELINE_ALREADY_DECIDABLE"
-    assert contract.get_credit(addr(direct_alice)) == str(BOUNTY)
+    assert contract.get_credit(addr(direct_charlie)) == str(BOUNTY + BOND)
     assert contract.get_stats()["accounting_balanced"] is True
 
 

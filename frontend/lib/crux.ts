@@ -84,7 +84,6 @@ export async function writeClient(address: string) {
     account: address as `0x${string}`,
     provider,
   } as any);
-  await client.connect("studionet");
   return client;
 }
 
@@ -166,4 +165,3 @@ export async function waitForFinalization(hash: string): Promise<unknown> {
   const client = readClient();
   return client.waitForTransactionReceipt({ hash: hash as any, status: "FINALIZED" as any, retries: 240, interval: 15_000 });
 }
-

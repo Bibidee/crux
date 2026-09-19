@@ -8,6 +8,7 @@ import { findLatestCaseBySponsor, submitRegistryWrite, waitForFinalization } fro
 import { parseGen } from "@/lib/format";
 import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
 import { TransactionNotice } from "@/components/TransactionNotice";
+import { validateCreateForm } from "@/lib/createForm";
 
 type Source = { url: string; fact: string };
 
@@ -20,10 +21,10 @@ export default function CreatePage() {
   const [rule, setRule] = useState("");
   const [a, setA] = useState("");
   const [b, setB] = useState("");
-  const [policy, setPolicy] = useState("Use official project documentation, primary-source registries, upstream repositories, vendor advisories, standards bodies, or other public first-party sources. Exclude social posts, anonymous claims, mirrors, and search-result snippets.");
+  const [policy, setPolicy] = useState("");
   const [sources, setSources] = useState<Source[]>([{ url: "", fact: "" }]);
-  const [bounty, setBounty] = useState("0.10");
-  const [hours, setHours] = useState("48");
+  const [bounty, setBounty] = useState("");
+  const [hours, setHours] = useState("");
   const [phase, setPhase] = useState("");
   const [txHash, setTxHash] = useState("");
 
@@ -31,10 +32,10 @@ export default function CreatePage() {
   function removeSource(index: number) { setSources((xs) => xs.filter((_, i) => i !== index)); }
 
   async function submit() {
-    if (!title.trim() || !question.trim() || !rule.trim() || !a.trim() || !b.trim() || !policy.trim()) return toast.error("Complete the case definition first");
-    if (sources.some((s) => !s.url.startsWith("https://") || s.fact.trim().length < 8)) return toast.error("Every baseline item needs an https source and a clear fact");
+    const validationError = validateCreateForm({ title, question, rule, outcomeA: a, outcomeB: b, policy, sources, bounty, hours });
+    if (validationError) return toast.error(validationError);
     let value: bigint;
-    try { value = parseGen(bounty); } catch (e: any) { return toast.error(e.message); }
+    try { value = parseGen(bounty); } catch { return toast.error("Enter a valid bounty"); }
     const duration = Number(hours);
     if (!Number.isFinite(duration) || duration < .5 || duration > 336) return toast.error("Choose a window from 0.5 to 336 hours");
     setBusy(true);
@@ -80,7 +81,7 @@ export default function CreatePage() {
 
           <section className="form-section">
             <div className="form-section-head"><span>03</span><div><h2>Set the source boundary</h2><p>Decide what counts before anyone hunts for the evidence.</p></div></div>
-            <div className="field"><label>Source policy</label><textarea value={policy} onChange={(e) => setPolicy(e.target.value)}/></div>
+            <div className="field"><label>Source policy</label><textarea value={policy} onChange={(e) => setPolicy(e.target.value)} placeholder="Only official first-party sources; exclude social posts and mirrors."/></div>
           </section>
 
           <section className="form-section">
@@ -91,12 +92,12 @@ export default function CreatePage() {
 
           <section className="form-section">
             <div className="form-section-head"><span>05</span><div><h2>Fund the close</h2><p>The bounty stays in Registry escrow. The closing contributor gets it; expiry or an invalid baseline returns it as sponsor credit.</p></div></div>
-            <div className="two-col"><div className="field"><label>Bounty · GEN</label><input inputMode="decimal" value={bounty} onChange={(e) => setBounty(e.target.value)}/><span className="field-help">0.001 to 10 GEN</span></div><div className="field"><label>Open window · hours</label><input inputMode="decimal" value={hours} onChange={(e) => setHours(e.target.value)}/><span className="field-help">0.5 to 336 hours</span></div></div>
+            <div className="two-col"><div className="field"><label>Bounty · GEN</label><input inputMode="decimal" value={bounty} onChange={(e) => setBounty(e.target.value)} placeholder="0.001"/><span className="field-help">0.001 to 10 GEN</span></div><div className="field"><label>Open window · hours</label><input inputMode="decimal" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="48"/><span className="field-help">0.5 to 336 hours</span></div></div>
           </section>
         </div>
 
         <aside className="form-aside">
-          <div className="summary-box"><small>Bounty locked on create</small><strong>{bounty || "0"} GEN</strong><p>The market opens only if validators verify every baseline fact and still return insufficient evidence.</p><button className="primary-button acid" style={{width:"100%",marginTop:8}} onClick={submit} disabled={busy}>{busy ? "Finalising case…" : "Fund + open case"}</button></div>
+          <div className="summary-box"><small>Bounty locked on create</small><strong>{bounty || "—"} GEN</strong><p>The market opens only if validators verify every baseline fact and still return insufficient evidence.</p><button className="primary-button acid" style={{width:"100%",marginTop:8}} onClick={submit} disabled={busy}>{busy ? "Finalising case…" : "Fund + open case"}</button></div>
           <TransactionNotice phase={phase} hash={txHash}/>
           <div className="info-panel"><h3>Contributor bond</h3><p>Set automatically to 1% of the bounty with a 0.0001 GEN floor. Verified and inconclusive submissions get it back; rejected or unrevealed submissions allocate it to the sponsor.</p></div>
           <div className="info-panel"><h3>Not a poll.</h3><p>Crux never pays the most popular answer. It pays evidence that survives source verification and changes the rule from unknown to decidable.</p></div>

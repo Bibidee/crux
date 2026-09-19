@@ -1,0 +1,37 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { CHAIN_HEX, CHAIN_ID, ensureStudionet, normalizeAccounts } from "./wallet";
+
+afterEach(() => { delete (globalThis as any).window; });
+
+describe("injected wallet integration", () => {
+  it("normalizes accounts without calling wallet-specific snap methods", () => {
+    expect(normalizeAccounts(["0xabc", 1, null])).toEqual(["0xabc"]);
+    expect(normalizeAccounts(undefined)).toEqual([]);
+  });
+
+  it("switches to Studionet through standard EIP-1193 methods", async () => {
+    const calls: { method: string; params?: unknown }[] = [];
+    (globalThis as any).window = { ethereum: { request: async (args: any) => {
+      calls.push(args);
+      if (args.method === "eth_chainId") return "0x1";
+      if (args.method === "wallet_switchEthereumChain") return null;
+      throw new Error(`unexpected ${args.method}`);
+    } } };
+    await ensureStudionet();
+    expect(calls.map((x) => x.method)).toEqual(["eth_chainId", "wallet_switchEthereumChain"]);
+    expect(calls[1].params).toEqual([{ chainId: CHAIN_HEX }]);
+    expect(CHAIN_ID).toBe(61999);
+  });
+
+  it("adds the network only when the wallet reports an unknown chain", async () => {
+    const methods: string[] = [];
+    (globalThis as any).window = { ethereum: { request: async (args: any) => {
+      methods.push(args.method);
+      if (args.method === "eth_chainId") return "0x1";
+      if (args.method === "wallet_switchEthereumChain") throw { code: 4902 };
+      return null;
+    } } };
+    await ensureStudionet();
+    expect(methods).toEqual(["eth_chainId", "wallet_switchEthereumChain", "wallet_addEthereumChain"]);
+  });
+});

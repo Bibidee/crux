@@ -22,12 +22,16 @@ export function injectedProvider(): Eip1193Provider | null {
   return window.ethereum || null;
 }
 
+export function normalizeAccounts(result: unknown): string[] {
+  return Array.isArray(result) ? result.filter((x): x is string => typeof x === "string") : [];
+}
+
 async function accounts(request = false): Promise<string[]> {
   const provider = injectedProvider();
   if (!provider) return [];
   const method = request ? "eth_requestAccounts" : "eth_accounts";
   const result = await provider.request({ method });
-  return Array.isArray(result) ? result.filter((x): x is string => typeof x === "string") : [];
+  return normalizeAccounts(result);
 }
 
 export async function ensureStudionet(): Promise<void> {
@@ -56,20 +60,17 @@ export function useInjectedWallet() {
   const [address, setAddress] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
+  const [disconnected, setDisconnected] = useState(false);
 
   const refresh = useCallback(async () => {
     const provider = injectedProvider();
-    if (!provider) {
-      setAddress(null); setChainId(null); setReady(true); return;
-    }
+    if (!provider) { setAddress(null); setChainId(null); setReady(true); return; }
     try {
-      const [xs, rawChain] = await Promise.all([
-        accounts(false), provider.request({ method: "eth_chainId" })
-      ]);
-      setAddress(xs[0] || null);
+      const [xs, rawChain] = await Promise.all([accounts(false), provider.request({ method: "eth_chainId" })]);
+      setAddress(disconnected ? null : (xs[0] || null));
       setChainId(typeof rawChain === "string" ? parseInt(rawChain, 16) : null);
     } finally { setReady(true); }
-  }, []);
+  }, [disconnected]);
 
   useEffect(() => {
     refresh();
@@ -86,6 +87,7 @@ export function useInjectedWallet() {
   }, [refresh]);
 
   const connect = useCallback(async () => {
+    setDisconnected(false);
     const provider = injectedProvider();
     if (!provider) throw new Error("Install or open an injected EIP-1193 wallet to continue");
     const xs = await accounts(true);
@@ -95,8 +97,13 @@ export function useInjectedWallet() {
     return xs[0];
   }, [refresh]);
 
+  const disconnect = useCallback(() => {
+    setDisconnected(true);
+    setAddress(null);
+  }, []);
+
   return {
     address, chainId, ready, connected: !!address, correctNetwork: chainId === CHAIN_ID,
-    hasProvider: !!injectedProvider(), connect, refresh, switchNetwork: ensureStudionet,
+    hasProvider: !!injectedProvider(), connect, disconnect, refresh, switchNetwork: ensureStudionet,
   };
 }

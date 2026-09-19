@@ -6,7 +6,7 @@ import { CruxMark } from "./CruxMark";
 import { WalletButton } from "./WalletButton";
 
 const links = [
-  ["/cases", "Cases"], ["/create", "Open a case"], ["/activity", "Activity"], ["/protocol", "Protocol"],
+  ["/cases", "Cases"], ["/create", "Open a case"], ["/activity", "Activity"], ["/demo", "Live demo"], ["/protocol", "Protocol"],
 ] as const;
 
 export function SiteHeader() {

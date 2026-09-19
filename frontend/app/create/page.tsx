@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { findLatestCaseBySponsor, submitRegistryWrite, waitForFinalization } from "@/lib/crux";
 import { parseGen } from "@/lib/format";
 import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
+import { TransactionNotice } from "@/components/TransactionNotice";
 
 type Source = { url: string; fact: string };
 
@@ -23,6 +24,8 @@ export default function CreatePage() {
   const [sources, setSources] = useState<Source[]>([{ url: "", fact: "" }]);
   const [bounty, setBounty] = useState("0.10");
   const [hours, setHours] = useState("48");
+  const [phase, setPhase] = useState("");
+  const [txHash, setTxHash] = useState("");
 
   function updateSource(index: number, key: keyof Source, value: string) { setSources((xs) => xs.map((x, i) => i === index ? { ...x, [key]: value } : x)); }
   function removeSource(index: number) { setSources((xs) => xs.filter((_, i) => i !== index)); }
@@ -39,17 +42,20 @@ export default function CreatePage() {
       const address = wallet.address || await wallet.connect();
       if (!wallet.correctNetwork) await wallet.switchNetwork();
       const closesAt = BigInt(Math.floor(Date.now() / 1000 + duration * 3600));
+      setPhase("Requesting wallet signature…");
       const hash = await submitRegistryWrite(address, {
         functionName: "create_case",
         args: [title.trim(), question.trim(), rule.trim(), a.trim(), b.trim(), policy.trim(), JSON.stringify(sources), closesAt],
         value,
       });
+      setTxHash(hash); setPhase("Transaction submitted — waiting for Studionet finality…");
       toast.message("Case submitted", { description: "The funded baseline must finalize before the market can open.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForFinalization(hash);
       const caseId = await findLatestCaseBySponsor(address, false);
+      setPhase("Case finalized — baseline verification queued.");
       toast.success("Case finalised", { description: "Baseline verification is now queued." });
       router.push(caseId ? `/cases/${caseId}` : "/cases");
-    } catch (e: any) { toast.error(e?.message || "Case creation failed"); }
+    } catch (e: any) { setPhase(e?.message || "Case creation failed"); toast.error(e?.message || "Case creation failed"); }
     finally { setBusy(false); }
   }
 
@@ -91,6 +97,7 @@ export default function CreatePage() {
 
         <aside className="form-aside">
           <div className="summary-box"><small>Bounty locked on create</small><strong>{bounty || "0"} GEN</strong><p>The market opens only if validators verify every baseline fact and still return insufficient evidence.</p><button className="primary-button acid" style={{width:"100%",marginTop:8}} onClick={submit} disabled={busy}>{busy ? "Finalising case…" : "Fund + open case"}</button></div>
+          <TransactionNotice phase={phase} hash={txHash}/>
           <div className="info-panel"><h3>Contributor bond</h3><p>Set automatically to 1% of the bounty with a 0.0001 GEN floor. Verified and inconclusive submissions get it back; rejected or unrevealed submissions allocate it to the sponsor.</p></div>
           <div className="info-panel"><h3>Not a poll.</h3><p>Crux never pays the most popular answer. It pays evidence that survives source verification and changes the rule from unknown to decidable.</p></div>
         </aside>

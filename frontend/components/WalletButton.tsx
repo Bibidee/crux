@@ -24,7 +24,7 @@ export function WalletButton() {
   if (!wallet.ready) return <button className="wallet-button muted" disabled>Checking wallet…</button>;
   if (wallet.connected) {
     return (
-      <button className={`wallet-button ${wallet.correctNetwork ? "" : "wrong-network"}`} onClick={act} disabled={busy}>
+      <button aria-label={wallet.correctNetwork ? `Connected wallet ${shortAddress(wallet.address)}` : "Switch wallet to Studionet chain 61999"} className={`wallet-button ${wallet.correctNetwork ? "" : "wrong-network"}`} onClick={act} disabled={busy}>
         <CircleDot size={14}/>
         <span>{wallet.correctNetwork ? shortAddress(wallet.address) : "Switch to 61999"}</span>
       </button>

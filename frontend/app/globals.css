@@ -69,6 +69,22 @@ main { min-height: 70vh; }
 .hero-strip b { font-size:13px; }
 .hero-strip span { color:var(--muted); font-size:12px; line-height:1.4; }
 .home-section { max-width:1420px; margin:auto; padding:110px 30px; border-top:1px solid var(--line); }
+.transaction-notice { display:flex; gap:10px; align-items:flex-start; padding:13px 14px; margin-top:14px; border:1px solid var(--line); background:var(--paper-2); font-size:12px; line-height:1.35; }
+.transaction-notice.is-final { border-color:#6d9c26; background:#e7f4c8; }
+.transaction-notice strong, .transaction-notice a { display:block; }
+.transaction-notice a { margin-top:4px; text-decoration:underline; color:var(--muted); }
+.notice-dot { width:8px; height:8px; flex:0 0 auto; margin-top:3px; border-radius:50%; background:var(--amber); box-shadow:0 0 0 4px color-mix(in srgb,var(--amber) 18%,transparent); }
+.is-final .notice-dot { background:var(--acid-strong); }
+.demo-callout { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:18px 20px; border:1px solid var(--ink); background:var(--acid); box-shadow:7px 7px 0 var(--ink); }
+.demo-callout strong { flex:1; min-width:220px; }
+.demo-callout a, .demo-steps a { text-decoration:underline; font-weight:700; }
+.demo-steps { list-style:none; padding:0; margin:70px 0; border-top:1px solid var(--ink); }
+.demo-steps li { display:grid; grid-template-columns:90px 1fr; gap:24px; padding:28px 0; border-bottom:1px solid var(--line); }
+.demo-steps li > span { font:12px ui-monospace,monospace; }
+.demo-steps h2 { margin:0 0 8px; font-size:28px; letter-spacing:-.04em; }
+.demo-steps p { max-width:650px; color:var(--muted); line-height:1.55; margin:0 0 12px; }
+.demo-footer { display:flex; gap:12px; flex-wrap:wrap; }
+@media (max-width:700px) { .demo-steps li { grid-template-columns:45px 1fr; gap:12px; } .demo-steps h2 { font-size:23px; } }
 .live-proof { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:18px 20px; margin-bottom:72px; border:1px solid var(--ink); background:var(--acid); box-shadow:7px 7px 0 var(--ink); }
 .live-proof div { display:flex; flex-direction:column; gap:7px; }
 .live-proof strong { font-size:20px; letter-spacing:-.03em; }

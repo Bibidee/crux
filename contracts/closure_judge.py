@@ -107,8 +107,10 @@ class ClosureJudge(gl.Contract):
     outcome_a_count: u256
     outcome_b_count: u256
     insufficient_count: u256
+    registry_address: str
 
-    def __init__(self):
+    def __init__(self, registry_address: str):
+        self.registry_address = _address(registry_address)
         self.outcome_a_count = u256(0)
         self.outcome_b_count = u256(0)
         self.insufficient_count = u256(0)
@@ -116,12 +118,15 @@ class ClosureJudge(gl.Contract):
     @gl.public.write
     def judge_closure(self, request_id: str, registry_address: str, question: str,
                       decision_rule: str, outcome_a: str, outcome_b: str,
-                      evidence_json: str) -> None:
+                      prior_evidence_json: str, evidence_json: str) -> None:
         registry_address = _address(registry_address)
-        if str(gl.message.sender_address).lower() != registry_address.lower():
-            raise gl.vm.UserError("[EXPECTED] judge request must come from the named registry")
+        if registry_address.lower() != self.registry_address.lower() or str(gl.message.sender_address).lower() != self.registry_address.lower():
+            raise gl.vm.UserError("[EXPECTED] judge request must come from the configured registry")
         if request_id in self.results:
             raise gl.vm.UserError("[EXPECTED] closure request already processed")
+        prior = _judge(question, decision_rule, outcome_a, outcome_b, prior_evidence_json)
+        if prior["outcome"] != "INSUFFICIENT_EVIDENCE":
+            raise gl.vm.UserError("[EXPECTED] candidate cannot adjudicate an already decidable graph")
         result = _judge(question, decision_rule, outcome_a, outcome_b, evidence_json)
         result["request_id"] = request_id
         result["recorded_at"] = _iso()

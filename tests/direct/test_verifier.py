@@ -1,4 +1,5 @@
 import json
+import pytest
 from tests.direct.conftest import addr, capture, warp
 
 
@@ -13,7 +14,7 @@ def good():
 def test_verifier_replays_substantive_fields(direct_vm, direct_deploy, direct_alice):
     warp(direct_vm)
     _, messages = capture(direct_vm)
-    contract = direct_deploy("contracts/evidence_verifier.py")
+    contract = direct_deploy("contracts/evidence_verifier.py", addr(direct_alice))
     direct_vm.sender = direct_alice
     direct_vm.mock_web(r".*example\.com/licence.*", {"status": 200, "body": "Commercial redistribution is permitted."})
     direct_vm.mock_llm(r"(?s).*CRUX_EVIDENCE_VERIFIER_V1.*", json.dumps(good()))
@@ -27,7 +28,7 @@ def test_verifier_replays_substantive_fields(direct_vm, direct_deploy, direct_al
 
 def test_verifier_validator_rejects_semantic_disagreement(direct_vm, direct_deploy, direct_alice):
     warp(direct_vm)
-    contract = direct_deploy("contracts/evidence_verifier.py")
+    contract = direct_deploy("contracts/evidence_verifier.py", addr(direct_alice))
     direct_vm.sender = direct_alice
     direct_vm.mock_web(r".*example\.com/licence.*", {"status": 200, "body": "Commercial redistribution is permitted."})
     direct_vm.mock_llm(r"(?s).*CRUX_EVIDENCE_VERIFIER_V1.*", json.dumps(good()))
@@ -38,3 +39,12 @@ def test_verifier_validator_rejects_semantic_disagreement(direct_vm, direct_depl
     direct_vm.mock_web(r".*example\.com/licence.*", {"status": 200, "body": "Commercial redistribution is permitted."})
     direct_vm.mock_llm(r"(?s).*CRUX_EVIDENCE_VERIFIER_V1.*", json.dumps({**good(), "source_allowed": False, "status": "REJECTED"}))
     assert direct_vm.run_validator() is False
+
+
+def test_verifier_rejects_unconfigured_registry_sender(direct_vm, direct_deploy, direct_alice, direct_bob):
+    warp(direct_vm)
+    contract = direct_deploy("contracts/evidence_verifier.py", addr(direct_alice))
+    direct_vm.sender = direct_bob
+    with pytest.raises(Exception, match="configured registry"):
+        contract.verify_evidence("cs-unauthorized", addr(direct_bob), "Question", "Rule", "Policy", "[]",
+                                 "https://example.com/licence", "A supported fact")

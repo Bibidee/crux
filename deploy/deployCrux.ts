@@ -23,11 +23,27 @@ export default async function main(client: GenLayerClient<any>) {
   const chainId = Number((client as any)?.chain?.id);
   if (chainId !== 61999) throw new Error(`Refusing deployment: Crux is locked to Studionet 61999, client is ${chainId}`);
   console.log("Crux deployment target: Studionet 61999 only");
-  const verifier = await deploy(client, "contracts/evidence_verifier.py");
+  // Bootstrap order is intentional: children authenticate one fixed Registry,
+  // while Registry binds those child addresses exactly once after deployment.
+  const registry = await deploy(client, "contracts/crux_registry.py", ["", ""]);
+  const verifier = await deploy(client, "contracts/evidence_verifier.py", [registry.address]);
   console.log("EvidenceVerifier", verifier);
-  const judge = await deploy(client, "contracts/closure_judge.py");
+  const judge = await deploy(client, "contracts/closure_judge.py", [registry.address]);
   console.log("ClosureJudge", judge);
-  const registry = await deploy(client, "contracts/crux_registry.py", [verifier.address, judge.address]);
+  const configureHash = await (client as any).writeContract({
+    address: registry.address,
+    functionName: "configure_components",
+    args: [verifier.address, judge.address],
+    value: 0n,
+  });
+  const configureReceipt: any = await client.waitForTransactionReceipt({
+    hash: configureHash as TransactionHash,
+    status: TransactionStatus.FINALIZED,
+    retries: 240,
+    interval: 5000,
+  } as any);
+  const configureOk = configureReceipt?.statusName === "FINALIZED" || configureReceipt?.statusName === "ACCEPTED" || configureReceipt?.status === 5 || configureReceipt?.status === 6;
+  if (!configureOk) throw new Error(`Component binding failed: ${JSON.stringify(configureReceipt)}`);
   console.log("CruxRegistry", registry);
 
   const manifest = {
@@ -37,7 +53,7 @@ export default async function main(client: GenLayerClient<any>) {
     rpc: "https://studio.genlayer.com/api",
     explorer: "https://explorer-studio.genlayer.com",
     deployedAt: new Date().toISOString(),
-    contracts: { verifier, judge, registry },
+    contracts: { verifier, judge, registry, configureHash: String(configureHash) },
   };
   mkdirSync(path.resolve(process.cwd(), "deployments"), { recursive: true });
   writeFileSync(path.resolve(process.cwd(), "deployments/studionet.json"), JSON.stringify(manifest, null, 2) + "\n");

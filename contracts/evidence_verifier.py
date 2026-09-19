@@ -122,8 +122,10 @@ class EvidenceVerifier(gl.Contract):
     total_verified: u256
     total_rejected: u256
     total_unavailable: u256
+    registry_address: str
 
-    def __init__(self):
+    def __init__(self, registry_address: str):
+        self.registry_address = _address(registry_address)
         self.total_verified = u256(0)
         self.total_rejected = u256(0)
         self.total_unavailable = u256(0)
@@ -133,8 +135,8 @@ class EvidenceVerifier(gl.Contract):
                         decision_rule: str, source_policy: str, existing_evidence_json: str,
                         evidence_url: str, claimed_fact: str) -> None:
         registry_address = _address(registry_address)
-        if str(gl.message.sender_address).lower() != registry_address.lower():
-            raise gl.vm.UserError("[EXPECTED] verifier request must come from the named registry")
+        if registry_address.lower() != self.registry_address.lower() or str(gl.message.sender_address).lower() != self.registry_address.lower():
+            raise gl.vm.UserError("[EXPECTED] verifier request must come from the configured registry")
         if request_id in self.results:
             raise gl.vm.UserError("[EXPECTED] verifier request already processed")
         if not evidence_url.startswith("https://"):

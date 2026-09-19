@@ -173,6 +173,8 @@ class CruxRegistry(gl.Contract):
     credits: TreeMap[Address, u256]
     verifier_address: str
     judge_address: str
+    bootstrapper: str
+    components_configured: bool
     next_case: u256
     next_submission: u256
     total_deposited: u256
@@ -186,8 +188,15 @@ class CruxRegistry(gl.Contract):
     retryable_submissions: u256
 
     def __init__(self, verifier_address: str, judge_address: str):
-        self.verifier_address = _address(verifier_address, "verifier")
-        self.judge_address = _address(judge_address, "judge")
+        self.bootstrapper = str(gl.message.sender_address)
+        if verifier_address and judge_address:
+            self.verifier_address = _address(verifier_address, "verifier")
+            self.judge_address = _address(judge_address, "judge")
+            self.components_configured = True
+        else:
+            self.verifier_address = ""
+            self.judge_address = ""
+            self.components_configured = False
         self.next_case = u256(1)
         self.next_submission = u256(1)
         self.total_deposited = u256(0)
@@ -228,6 +237,21 @@ class CruxRegistry(gl.Contract):
         if str(gl.message.sender_address).lower() != self.judge_address.lower():
             raise gl.vm.UserError("[EXPECTED] only the configured judge can callback")
 
+    def _components_only(self) -> None:
+        if not self.components_configured:
+            raise gl.vm.UserError("[EXPECTED] protocol components are not configured")
+
+    @gl.public.write
+    def configure_components(self, verifier_address: str, judge_address: str) -> None:
+        if self.components_configured:
+            raise gl.vm.UserError("[EXPECTED] protocol components are already configured")
+        if str(gl.message.sender_address).lower() != self.bootstrapper.lower():
+            raise gl.vm.UserError("[EXPECTED] only the deployment bootstrapper can configure components")
+        self.verifier_address = _address(verifier_address, "verifier")
+        self.judge_address = _address(judge_address, "judge")
+        self.components_configured = True
+        self.bootstrapper = ""
+
     def _credit(self, recipient: str, amount: int) -> None:
         account = Address(recipient)
         current = int(self.credits[account]) if account in self.credits else 0
@@ -258,6 +282,7 @@ class CruxRegistry(gl.Contract):
     def create_case(self, title: str, question: str, decision_rule: str, outcome_a: str,
                     outcome_b: str, source_policy: str, baseline_evidence_json: str,
                     closes_at: u256) -> str:
+        self._components_only()
         title = _text(title, "title", MAX_TITLE, 4)
         question = _text(question, "question", MAX_QUESTION, 20)
         decision_rule = _text(decision_rule, "decision rule", MAX_RULE, 30)
@@ -314,6 +339,7 @@ class CruxRegistry(gl.Contract):
                                    "provenance": "GENLAYER_INDEPENDENT_REPLAY"}
         if result["status"] == "SOURCE_UNAVAILABLE":
             case["status"] = "BASELINE_RETRYABLE"
+            self._save_case(case)
         elif result["status"] != "READY":
             self._close_refund(case, "INVALID_BASELINE")
         elif result["outcome"] != "INSUFFICIENT_EVIDENCE":
@@ -340,9 +366,14 @@ class CruxRegistry(gl.Contract):
     @gl.public.write.payable
     def commit_evidence(self, case_id: str, commitment: str) -> str:
         case = self._case(case_id)
-        if case["status"] != "OPEN" or _now() >= int(case["closes_at"]):
+        if case["status"] != "OPEN" or _now() + REVEAL_TIMEOUT >= int(case["closes_at"]):
             raise gl.vm.UserError("[EXPECTED] case is not open")
-        if len(case["submission_ids"]) >= MAX_SUBMISSIONS:
+        active_submission_count = sum(
+            1 for submission_id in case["submission_ids"]
+            if self._submission(submission_id)["status"] in
+            ("COMMITTED", "VERIFICATION_PENDING", "CLOSURE_PENDING")
+        )
+        if active_submission_count >= MAX_SUBMISSIONS:
             raise gl.vm.UserError("[EXPECTED] case submission limit reached")
         contributor = str(gl.message.sender_address)
         if contributor.lower() == case["sponsor"].lower():
@@ -383,6 +414,10 @@ class CruxRegistry(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] reveal is not available")
         if case["status"] != "OPEN" or _now() >= int(case["closes_at"]):
             raise gl.vm.UserError("[EXPECTED] case is no longer open")
+        for existing_id in case["submission_ids"]:
+            existing = self._submission(existing_id)
+            if existing["status"] in ("VERIFICATION_PENDING", "CLOSURE_PENDING"):
+                raise gl.vm.UserError("[EXPECTED] another evidence adjudication is already pending")
         evidence_url = _text(evidence_url, "evidence url", MAX_URL, 8)
         claimed_fact = _text(claimed_fact, "claimed fact", MAX_FACT, 8)
         if not evidence_url.startswith("https://"):
@@ -457,7 +492,7 @@ class CruxRegistry(gl.Contract):
         judge = gl.get_contract_at(Address(self.judge_address))
         judge.emit(on="finalized").judge_closure(
             submission_id, str(gl.message.contract_address), case["question"], case["decision_rule"],
-            case["outcome_a"], case["outcome_b"], _json(packet)
+            case["outcome_a"], case["outcome_b"], _json(case["accepted_evidence"]), _json(packet)
         )
 
     @gl.public.write
@@ -635,7 +670,8 @@ class CruxRegistry(gl.Contract):
         return {
             "product": "Crux", "version": VERSION, "network": "StudioNet", "chain_id": NETWORK_ID,
             "rpc": "https://studio.genlayer.com/api", "verifier": self.verifier_address,
-            "judge": self.judge_address, "admin_controls": False, "protocol_fee_bps": "0",
+            "judge": self.judge_address, "components_configured": self.components_configured,
+            "admin_controls": False, "protocol_fee_bps": "0",
             "total_cases": str(len(self.case_ids)), "total_submissions": str(len(self.submission_ids)),
             "cases_closed": str(int(self.cases_closed)),
             "verified_non_closing": str(int(self.verified_non_closing)),

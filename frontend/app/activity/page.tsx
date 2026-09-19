@@ -61,7 +61,7 @@ export default function ActivityPage() {
       if (!submissionId) submissionId = await getSubmissionForCommitment(item.commitment, true);
       if (!submissionId) throw new Error("Commitment is not visible yet. Wait for finality and try again.");
       const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, item.evidenceUrl, item.claimedFact, item.salt] });
-      removePendingReveal(item.commitment); setPhase("Reveal submitted — waiting for verifier consensus…"); toast.message("Reveal submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash); await refresh(); setPhase("Reveal finalized; verifier callback is queued.");
+      setPhase("Reveal submitted — waiting for verifier consensus…"); toast.message("Reveal submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash); removePendingReveal(item.commitment); await refresh(); setPhase("Reveal finalized; verifier callback is queued.");
     } catch (e: any) { setPhase(e?.message || "Reveal failed"); toast.error(e?.message || "Reveal failed"); }
     finally { setBusy(""); }
   }

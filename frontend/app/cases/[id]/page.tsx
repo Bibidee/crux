@@ -75,9 +75,9 @@ export default function CaseDetailPage() {
       if (!submissionId) submissionId = await getSubmissionForCommitment(pending.commitment, true);
       if (!submissionId) throw new Error("Commitment is not final yet. Try reveal again in a moment.");
       const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, pending.evidenceUrl, pending.claimedFact, pending.salt] });
-      removePendingReveal(pending.commitment); setPending(null); setUrl(""); setFact("");
       toast.message("Evidence revealed", { description: "GenLayer will now fetch the source and verify the claim.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForDecision(hash);
+      removePendingReveal(pending.commitment); setPending(null); setUrl(""); setFact("");
       await refresh(true);
     } catch (e: any) { toast.error(e?.message || "Reveal failed"); }
     finally { setBusy(""); }

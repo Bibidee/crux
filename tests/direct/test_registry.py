@@ -66,6 +66,20 @@ def test_case_must_begin_insufficient(direct_vm, direct_deploy, direct_alice, di
     assert contract.get_stats()["accounting_balanced"] is True
 
 
+def test_component_bootstrap_is_one_time_and_not_rebindable(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    direct_vm.sender = direct_alice
+    contract = direct_deploy("contracts/crux_registry.py", "", "")
+    direct_vm.sender = direct_bob
+    with pytest.raises(Exception, match="bootstrapper"):
+        contract.configure_components(addr(direct_charlie), addr(direct_charlie))
+    direct_vm.sender = direct_alice
+    contract.configure_components(addr(direct_charlie), addr(direct_charlie))
+    assert contract.get_stats()["components_configured"] is True
+    with pytest.raises(Exception, match="already configured"):
+        contract.configure_components(addr(direct_bob), addr(direct_bob))
+
+
 def test_commit_reveal_verify_compose_close_and_withdraw(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     warp(direct_vm)
     transfers, messages = capture(direct_vm)

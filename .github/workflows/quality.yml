@@ -13,6 +13,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
+      - name: Pin the contract runtime used by the semantic linter
+        run: echo "GENVM_VERSION=v0.2.12" >> "$GITHUB_ENV"
       - run: genvm-lint check contracts/crux_registry.py --json
       - run: genvm-lint check contracts/evidence_verifier.py --json
       - run: genvm-lint check contracts/closure_judge.py --json

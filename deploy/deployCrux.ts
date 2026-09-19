@@ -20,7 +20,8 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
   const address = (receipt?.txDataDecoded as DecodedDeployData | undefined)?.contractAddress
     || receipt?.data?.contract_address || receipt?.contract_address || receipt?.recipient;
   if (!address) throw new Error(`No contract address returned for ${file}`);
-  return { address: String(address), hash: String(hash) };
+  const txHash = String(hash);
+  return { address: String(address), hash: txHash, txHash };
 }
 
 export default async function main(client: GenLayerClient<any>) {
@@ -60,7 +61,13 @@ export default async function main(client: GenLayerClient<any>) {
     rpc: "https://studio.genlayer.com/api",
     explorer: "https://explorer-studio.genlayer.com",
     deployedAt: new Date().toISOString(),
-    contracts: { verifier, judge, registry, configureHash: String(configureHash) },
+    contracts: {
+      verifier,
+      judge,
+      registry,
+      configureHash: String(configureHash),
+      configureTxHash: String(configureHash),
+    },
   };
   mkdirSync(path.resolve(process.cwd(), "deployments"), { recursive: true });
   writeFileSync(path.resolve(process.cwd(), "deployments/studionet.json"), JSON.stringify(manifest, null, 2) + "\n");

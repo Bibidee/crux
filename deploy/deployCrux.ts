@@ -12,9 +12,13 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
     retries: 240,
     interval: 5000,
   } as any);
-  const ok = receipt?.statusName === "FINALIZED" || receipt?.statusName === "ACCEPTED" || receipt?.status === 5 || receipt?.status === 6;
+  const statusName = receipt?.statusName ?? receipt?.status_name;
+  const ok = statusName === "FINALIZED" || statusName === "ACCEPTED"
+    || receipt?.status === 5 || receipt?.status === 6 || receipt?.status === 7
+    || receipt?.result === 6;
   if (!ok) throw new Error(`Deployment failed for ${file}: ${JSON.stringify(receipt)}`);
-  const address = (receipt?.txDataDecoded as DecodedDeployData | undefined)?.contractAddress || receipt?.data?.contract_address || receipt?.recipient;
+  const address = (receipt?.txDataDecoded as DecodedDeployData | undefined)?.contractAddress
+    || receipt?.data?.contract_address || receipt?.contract_address || receipt?.recipient;
   if (!address) throw new Error(`No contract address returned for ${file}`);
   return { address: String(address), hash: String(hash) };
 }
@@ -42,7 +46,10 @@ export default async function main(client: GenLayerClient<any>) {
     retries: 240,
     interval: 5000,
   } as any);
-  const configureOk = configureReceipt?.statusName === "FINALIZED" || configureReceipt?.statusName === "ACCEPTED" || configureReceipt?.status === 5 || configureReceipt?.status === 6;
+  const configureStatusName = configureReceipt?.statusName ?? configureReceipt?.status_name;
+  const configureOk = configureStatusName === "FINALIZED" || configureStatusName === "ACCEPTED"
+    || configureReceipt?.status === 5 || configureReceipt?.status === 6 || configureReceipt?.status === 7
+    || configureReceipt?.result === 6;
   if (!configureOk) throw new Error(`Component binding failed: ${JSON.stringify(configureReceipt)}`);
   console.log("CruxRegistry", registry);
 

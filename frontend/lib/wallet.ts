@@ -71,6 +71,7 @@ function useWalletState(): InjectedWallet {
   const [chainId, setChainId] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const [disconnected, setDisconnected] = useState(false);
+  const disconnectedRef = useRef(false);
   const sessionGeneration = useRef(0);
   const refreshGeneration = useRef(0);
 
@@ -81,10 +82,10 @@ function useWalletState(): InjectedWallet {
     try {
       const [xs, rawChain] = await Promise.all([accounts(false), provider.request({ method: "eth_chainId" })]);
       if (requestGeneration !== refreshGeneration.current) return;
-      setAddress(disconnected ? null : (xs[0] || null));
+      setAddress(disconnectedRef.current ? null : (xs[0] || null));
       setChainId(typeof rawChain === "string" ? parseInt(rawChain, 16) : null);
     } finally { setReady(true); }
-  }, [disconnected]);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -102,6 +103,7 @@ function useWalletState(): InjectedWallet {
 
   const connect = useCallback(async () => {
     const requestGeneration = sessionGeneration.current;
+    disconnectedRef.current = false;
     setDisconnected(false);
     const provider = injectedProvider();
     if (!provider) throw new Error("Install or open an injected EIP-1193 wallet to continue");
@@ -120,6 +122,7 @@ function useWalletState(): InjectedWallet {
 
   const disconnect = useCallback(() => {
     sessionGeneration.current += 1;
+    disconnectedRef.current = true;
     setDisconnected(true);
     setAddress(null);
   }, []);

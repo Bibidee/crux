@@ -145,7 +145,7 @@ genlayer network info
 genlayer deploy
 ```
 
-`deploy/deployCrux.ts` refuses to continue unless the configured client chain is exactly `61999`. It deploys the two adjudication contracts first and passes their final addresses into the Registry constructor. On success it writes:
+`deploy/deployCrux.ts` refuses to continue unless the configured client chain is exactly `61999`. The secure bootstrap deploys an unbound Registry, deploys both adjudication contracts bound to that Registry, then performs a one-time Registry component binding. On success it writes:
 
 - `deployments/studionet.json`
 - `frontend/.env.local`
@@ -195,7 +195,7 @@ GenVM web rendering can follow redirects while the currently exposed API does no
 
 ## Release status
 
-Studionet deployment and the complete two-wallet evidence flow passed on chain `61999`. The live frontend is [https://crux-end.vercel.app](https://crux-end.vercel.app). Final contract addresses and live transaction hashes are recorded in [`deployments/studionet.json`](deployments/studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md).
+The historical Studionet deployment and complete two-wallet evidence flow passed on chain `61999`; the live frontend is [https://crux-end.vercel.app](https://crux-end.vercel.app). Those addresses and transactions are recorded in [`deployments/studionet.json`](deployments/studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md). That deployment predates the security remediation in [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) and must not be treated as remediated or production-ready until an approved redeployment is completed.
 
 Deployment set (unlocked CLI, Studionet chain 61999):
 

@@ -39,6 +39,8 @@ The current Studionet deployment is unchanged and therefore does not contain the
 
 Existing live contracts remain the previously documented Studionet deployment and must be treated as pre-remediation until that approved deployment occurs.
 
+Read-only verification against the documented Registry on 2026-09-19 confirmed chain `61999`, the documented verifier/judge addresses, `accounting_balanced=true`, `cases_closed=1`, `total_cases=3` and the historical `cx-2` closure. The live `get_stats` response has no `components_configured` field, confirming it is the pre-remediation Registry schema rather than the locally remediated contract. No write transaction was sent during this audit continuation.
+
 ## Remaining issues
 
 No critical protocol defect remains in the locally tested source. Production readiness is withheld because the live contracts have not been redeployed and the required live lifecycle evidence has not been re-executed against the remediated bytecode, as prohibited without explicit approval.

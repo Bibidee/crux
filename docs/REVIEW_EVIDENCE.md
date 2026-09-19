@@ -13,7 +13,7 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 | Accounting | Pull credits + exposed conservation invariant | Final registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
 | Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is live, but its current public build still points at the prior registry and requires republishing |
 | Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Live transactions and final stats verified on chain 61999 |
-| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | Latest CI: 3 lints, 22 direct tests, typecheck and build pass; follow-up source is not live |
+| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | Latest CI: 3 lints, 22 direct tests, frontend cache regression tests, typecheck and build pass; published frontend is live |
 
 ## Final command evidence
 
@@ -51,4 +51,5 @@ Negative path 2: `cx-3`, create tx `0x5953a654ee5dbd7994a9e767170acf6dec6809c836
 
 Explorer links use `https://explorer-studio.genlayer.com/tx/<hash>` and the Registry address link above.
 ```
+
 

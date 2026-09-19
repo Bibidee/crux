@@ -4,8 +4,8 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 
 | Review area | Repository evidence | Live evidence before submission |
 |---|---|---|
-| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-3` opened through real baseline consensus; contributor lifecycle remains pending |
-| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-3`; Wallet B transaction flow still requires re-unlocked signer |
+| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-3` closed through real baseline, verifier, closure consensus; payout withdrawn |
+| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-3`; Wallet B won and withdrew |
 | Current external facts | Baseline and candidate source URLs are fetched inside GenVM | `cx-3` baseline finalized as `INSUFFICIENT_EVIDENCE`, then opened for candidate evidence |
 | Substantive validation | Verifier compares six semantic fields; ClosureJudge independently replays outcome/sufficiency | Add a validator disagreement/negative test result |
 | Non-trivial architecture | Registry + EvidenceVerifier + ClosureJudge with finalized cross-contract messages | Smoke passed; addresses below |
@@ -13,7 +13,7 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 | Accounting | Pull credits + exposed conservation invariant | Final registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
 | Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is configured for the finalized Studionet deployment below |
 | Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Live transactions and final stats verified on chain 61999 |
-| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | Direct suite and integration smoke now pass; semantic linter cache remains externally broken |
+| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | Latest CI: 3 lints, 22 direct tests, typecheck and build pass; follow-up source is not live |
 
 ## Final command evidence
 

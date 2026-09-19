@@ -18,7 +18,7 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 ## Final command evidence
 
 ```text
-genvm-lint check contracts/*.py --json: structural pass (3); semantic SDK validation still blocked by missing `runners/py-genlayer/1j/b45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6.tar` after stable cache refresh
+GENVM_VERSION=v0.2.12 genvm-lint check contracts/{crux_registry,evidence_verifier,closure_judge}.py --json: PASS (all three structural + semantic checks; 3 methods validated per contract set, Registry 18 methods / 2 constructor params)
 pytest tests/direct/ -v: PASS (13 passed; Windows-compatible calldata tempfile harness added in `tests/direct/conftest.py`)
 CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s: PASS (1 passed, real Studionet RPC; deployment/schema wiring)
 npm run typecheck: PASS
@@ -44,7 +44,8 @@ Evidence reveal: tx `0xcdb5620451b71eb275ef0a1adb03ae7781c6b2c410b893ac81ee463dc
 Verifier callback: `VERIFIED`; six substantive verifier fields true in finalized submission state
 Closure callback: `OUTCOME_A`, case `CLOSED`, winner Wallet B `0xf883bCE8FcB120F714B147446342D7E4545Bc988`
 Winner withdrawal: `1100000000000000` attoGEN credit, tx `0xad50ec22406c68f51f6e3190a0e9ff73e288001adbbbc71e0a87358d32a5e776`
-Negative path: `cx-1`, create tx `0x2360d4e1e1cf10f94abe83edd01370de5d8c02b69ec29d2cf60221198a66511c`; baseline consensus returned `BASELINE_ALREADY_DECIDABLE` and refunded instead of opening.
+Negative path 1: `cx-1`, create tx `0x2360d4e1e1cf10f94abe83edd01370de5d8c02b69ec29d2cf60221198a66511c`; baseline consensus returned `BASELINE_ALREADY_DECIDABLE` and refunded instead of opening.
+Negative path 2: `cx-3`, create tx `0x5953a654ee5dbd7994a9e767170acf6dec6809c836ee99a1ae6655be05a5d0b9`; independent baseline consensus again returned `BASELINE_ALREADY_DECIDABLE`, preventing evidence submission and preserving the unresolved-market invariant.
 
 Explorer links use `https://explorer-studio.genlayer.com/tx/<hash>` and the Registry address link above.
 ```

@@ -69,6 +69,12 @@ main { min-height: 70vh; }
 .hero-strip b { font-size:13px; }
 .hero-strip span { color:var(--muted); font-size:12px; line-height:1.4; }
 .home-section { max-width:1420px; margin:auto; padding:110px 30px; border-top:1px solid var(--line); }
+.live-proof { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:18px 20px; margin-bottom:72px; border:1px solid var(--ink); background:var(--acid); box-shadow:7px 7px 0 var(--ink); }
+.live-proof div { display:flex; flex-direction:column; gap:7px; }
+.live-proof strong { font-size:20px; letter-spacing:-.03em; }
+.live-proof span:not(.step-no) { font:12px ui-monospace,monospace; }
+.live-proof a { font-weight:700; text-decoration:underline; }
+@media (max-width: 700px) { .live-proof { align-items:flex-start; flex-direction:column; } }
 .section-head { display:flex; justify-content:space-between; align-items:end; gap:30px; margin-bottom:38px; }
 .section-head h2 { margin:0; max-width:720px; font-size:clamp(36px,4.2vw,62px); line-height:1; letter-spacing:-.052em; font-weight:610; }
 .section-head p { max-width:410px; color:var(--muted); line-height:1.55; margin:0; }

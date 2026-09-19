@@ -38,6 +38,10 @@ export default function HomePage() {
       </section>
 
       <section className="home-section">
+        <div className="live-proof">
+          <div><span className="step-no">LIVE / STUDIONET</span><strong>Crux is running on GenLayer.</strong></div>
+          <div><span>Chain 61999 · source-grounded consensus · pull accounting</span><a href={`https://explorer-studio.genlayer.com/address/${process.env.NEXT_PUBLIC_REGISTRY_ADDRESS}`} target="_blank" rel="noreferrer">View Registry ↗</a></div>
+        </div>
         <div className="section-head"><h2>Unknown is a valid state. It does not have to be the last one.</h2><p>Crux starts where a decision system should stop: the available facts are not enough. The market is for the missing evidence, not for a guess.</p></div>
         <div className="steps-grid">
           <article className="step"><span className="step-no">01 / OPEN</span><h3>Fund the gap.</h3><p>Define the question, two outcomes, decision rule, source policy, and the baseline evidence that still leaves the answer unresolved.</p></article>

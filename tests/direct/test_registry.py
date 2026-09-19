@@ -178,6 +178,49 @@ def test_commitment_is_bound_to_registry_case_wallet_and_reveal(direct_vm, direc
         contract.reveal_evidence(sid, url, fact, salt)
 
 
+def test_terminal_submissions_release_capacity_but_history_remains(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))
+    cid = open_case(direct_vm, contract, direct_alice)
+    url, fact, salt = "https://example.com/rejected", "A rejected fact for capacity testing.", "99" * 32
+    first_digest = commitment(direct_vm, cid, direct_bob, url, fact, salt)
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    contract.commit_evidence(cid, first_digest)
+    for index in range(39):
+        contract.commit_evidence(cid, f"{index + 2:064x}")
+    with pytest.raises(Exception, match="submission limit"):
+        contract.commit_evidence(cid, "aa" * 32)
+    direct_vm.value = 0
+    digest = commitment(direct_vm, cid, direct_bob, "https://example.com/accepted", "A new fact after release.", "aa" * 32)
+    # Replace the first historical commitment with a real terminal rejection.
+    # The first 40 records remain auditable; only active capacity is released.
+    first = contract.get_submission_for_commitment(first_digest)
+    assert first == "cs-1"
+    direct_vm.sender = direct_bob
+    contract.reveal_evidence(first, url, fact, salt)
+    direct_vm.sender = direct_charlie
+    contract.record_verification(first, json.dumps({
+        "status": "REJECTED", "same_subject": True, "source_allowed": False,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "Capacity regression test rejection."
+    }))
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    sid = contract.commit_evidence(cid, digest)
+    assert sid == "cs-41"
+    direct_vm.value = 0
+
+
+def test_commit_rejected_when_reveal_window_reaches_case_deadline(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))
+    cid = open_case(direct_vm, contract, direct_alice)
+    warp(direct_vm, NOW + 6000)
+    direct_vm.sender, direct_vm.value = direct_bob, BOND
+    with pytest.raises(Exception, match="case is not open"):
+        contract.commit_evidence(cid, "ab" * 32)
+    direct_vm.value = 0
+
+
 def test_source_unavailable_is_retryable_and_refunds_bond(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     warp(direct_vm)
     contract = direct_deploy("contracts/crux_registry.py", addr(direct_charlie), addr(direct_charlie))

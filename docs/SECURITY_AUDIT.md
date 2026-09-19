@@ -22,7 +22,7 @@ This audit covers the Registry, EvidenceVerifier, ClosureJudge, deployment boots
 ## Verification
 
 - `genvm-lint` v0.11.0 with `GENVM_VERSION=v0.2.12`: all three contracts passed lint and validation.
-- Direct GenVM tests: `16 passed`.
+- Direct GenVM tests: `18 passed`.
 - Frontend typecheck: passed.
 - Frontend production build: passed; the host emits a non-fatal missing `eslint-config-next` warning from an external root ESLint config.
 - Deployment TypeScript compile: passed.

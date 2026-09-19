@@ -3,8 +3,9 @@
 Run only after the direct suite is green:
   CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s
 
-This deploys three contracts to the configured Studionet account. It intentionally
-stops before funding a case because a complete market demo needs two funded wallets.
+This deploys and securely bootstraps three contracts to the configured Studionet
+account. It intentionally stops before funding a case because a complete market
+demo needs two funded wallets.
 """
 import os
 import pytest
@@ -19,14 +20,17 @@ pytestmark = pytest.mark.skipif(
 
 def test_three_contract_deployment_and_schema_wiring():
     account = get_default_account()
+    registry = get_contract_factory(contract_file_path="crux_registry.py").deploy(
+        args=["", ""], account=account, wait_retries=180,
+    )
     verifier = get_contract_factory(contract_file_path="evidence_verifier.py").deploy(
-        args=[], account=account, wait_retries=180,
+        args=[str(registry.address)], account=account, wait_retries=180,
     )
     judge = get_contract_factory(contract_file_path="closure_judge.py").deploy(
-        args=[], account=account, wait_retries=180,
+        args=[str(registry.address)], account=account, wait_retries=180,
     )
-    registry = get_contract_factory(contract_file_path="crux_registry.py").deploy(
-        args=[str(verifier.address), str(judge.address)], account=account, wait_retries=180,
+    registry.configure_components(str(verifier.address), str(judge.address)).transact(
+        wait_retries=180, wait_triggered_transactions=True,
     )
 
     stats = registry.get_stats().call()

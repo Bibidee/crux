@@ -71,15 +71,16 @@ function useWalletState(): InjectedWallet {
   const [chainId, setChainId] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const [disconnected, setDisconnected] = useState(false);
-  const generation = useRef(0);
+  const sessionGeneration = useRef(0);
+  const refreshGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
     const provider = injectedProvider();
     if (!provider) { setAddress(null); setChainId(null); setReady(true); return; }
-    const requestGeneration = ++generation.current;
+    const requestGeneration = ++refreshGeneration.current;
     try {
       const [xs, rawChain] = await Promise.all([accounts(false), provider.request({ method: "eth_chainId" })]);
-      if (requestGeneration !== generation.current) return;
+      if (requestGeneration !== refreshGeneration.current) return;
       setAddress(disconnected ? null : (xs[0] || null));
       setChainId(typeof rawChain === "string" ? parseInt(rawChain, 16) : null);
     } finally { setReady(true); }
@@ -100,20 +101,25 @@ function useWalletState(): InjectedWallet {
   }, [refresh]);
 
   const connect = useCallback(async () => {
-    const requestGeneration = ++generation.current;
+    const requestGeneration = sessionGeneration.current;
     setDisconnected(false);
     const provider = injectedProvider();
     if (!provider) throw new Error("Install or open an injected EIP-1193 wallet to continue");
     const xs = await accounts(true);
-    if (requestGeneration !== generation.current) throw new Error("Wallet connection was superseded");
     if (!xs[0]) throw new Error("No wallet account was returned");
     await ensureStudionet();
-    await refresh();
+    if (requestGeneration !== sessionGeneration.current) throw new Error("Wallet connection was superseded");
+    const activeProvider = injectedProvider();
+    const [latestAccounts, rawChain] = await Promise.all([accounts(false), activeProvider?.request({ method: "eth_chainId" })]);
+    if (requestGeneration !== sessionGeneration.current) throw new Error("Wallet connection was superseded");
+    setAddress(latestAccounts[0] || xs[0]);
+    setChainId(typeof rawChain === "string" ? parseInt(rawChain, 16) : CHAIN_ID);
+    setReady(true);
     return xs[0];
-  }, [refresh]);
+  }, []);
 
   const disconnect = useCallback(() => {
-    generation.current += 1;
+    sessionGeneration.current += 1;
     setDisconnected(true);
     setAddress(null);
   }, []);

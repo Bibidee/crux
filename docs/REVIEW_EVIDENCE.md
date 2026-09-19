@@ -36,6 +36,8 @@ Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel pro
 
 ## Live demonstration transactions
 
+Current remediated live flow: `cx-3` create tx `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`; Bob submission `cs-1`; commit tx `0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739`; reveal tx `0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452`; verifier state `VERIFIED`; closure state currently `CLOSURE_PENDING`. No closure or withdrawal hash is claimed yet.
+
 ```text
 Case create: `cx-1`, sponsor Wallet A `0x7eB2a4B4e913Df62eAe807eF60509B3B7284C7FA`, tx `0xecfe5c8607598584ae46cb6b436a9466b303c0d3b12e403c22f9c7a135353ddd`
 Baseline decision: `INSUFFICIENT_EVIDENCE`, finalized by real consensus in `cx-2`

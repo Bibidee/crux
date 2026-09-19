@@ -39,7 +39,9 @@ The baseline should remain insufficient because the accepted evidence graph only
 
 ## Wallet B — contributor
 
-Current live state: `cx-3` is `OPEN` after finalized baseline consensus. The sponsor transaction is `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`. Bob's commit/reveal and payout transactions remain to be executed with a re-unlocked funded contributor wallet.
+Current live state: `cx-3` is `OPEN` after finalized baseline consensus. Bob's submission `cs-1` is `VERIFIED` and `CLOSURE_PENDING`.
+
+Live hashes: create `0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c`; commit `0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739`; reveal `0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452`. Closure and withdrawal are not claimed until their callbacks finalize.
 
 Submit the same official documentation URL with the *new* claimed fact:
 

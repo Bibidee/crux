@@ -21,5 +21,17 @@
       "txHash": "0x4f0f796f0fb20d7f9cb96f1a873038a52786ce59cdc8c6207ed5db6aebd13a88"
     },
     "configureHash": "0x87efe5c177d5a0ee6d840624f117a870777a0a96d19e2d8e29e9040f001a08db"
+  },
+  "liveDemo": {
+    "caseId": "cx-3",
+    "createTx": "0xe043459ccb6e25129eb76e8b1dcfb2df91c832c3c8d3563dc68bc2b1a5e36f0c",
+    "commitment": "1fb6252034c14b20b977cfa69a9086874cf80642de9391a745fda7bdbf23b0e8",
+    "submissionId": "cs-1",
+    "commitTx": "0x77ca4232ea957280035c2f4f6043d27f7326403e65b576e12513b1f52a006739",
+    "revealTx": "0x4fe901edfb80b71afbba5e78f24c6b871d2945c1ca9ed6bdcf7a341bb5a3d452",
+    "verification": "VERIFIED",
+    "closure": "CLOSURE_PENDING",
+    "winner": "",
+    "withdrawTx": ""
   }
 }

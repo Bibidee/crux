@@ -42,6 +42,7 @@ export default function CreatePage() {
     try {
       const address = wallet.address || await wallet.connect();
       if (!wallet.correctNetwork) await wallet.switchNetwork();
+      if (!wallet.isCurrent(address)) throw new Error("Wallet changed; review the case before submitting again");
       const closesAt = BigInt(Math.floor(Date.now() / 1000 + duration * 3600));
       setPhase("Requesting wallet signature…");
       const hash = await submitRegistryWrite(address, {

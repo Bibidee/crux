@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { WalletProvider } from "@/lib/wallet";
 
 export const metadata: Metadata = {
   title: "Crux — Evidence completion markets",
@@ -11,6 +12,6 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en"><body><SiteHeader/><main>{children}</main><SiteFooter/><Toaster position="bottom-right" richColors closeButton/></body></html>
+    <html lang="en"><body><WalletProvider><SiteHeader/><main>{children}</main><SiteFooter/><Toaster position="bottom-right" richColors closeButton/></WalletProvider></body></html>
   );
 }

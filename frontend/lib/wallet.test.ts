@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { CHAIN_HEX, CHAIN_ID, ensureStudionet, normalizeAccounts } from "./wallet";
+import { CHAIN_HEX, CHAIN_ID, ensureStudionet, normalizeAccounts, sameWallet } from "./wallet";
 
 afterEach(() => { delete (globalThis as any).window; });
 
@@ -7,6 +7,12 @@ describe("injected wallet integration", () => {
   it("normalizes accounts without calling wallet-specific snap methods", () => {
     expect(normalizeAccounts(["0xabc", 1, null])).toEqual(["0xabc"]);
     expect(normalizeAccounts(undefined)).toEqual([]);
+  });
+
+  it("treats account changes as a new wallet and preserves no stale match", () => {
+    expect(sameWallet("0xAbC", "0xabc")).toBe(true);
+    expect(sameWallet("0xAbC", "0xdef")).toBe(false);
+    expect(sameWallet(null, "0xabc")).toBe(false);
   });
 
   it("switches to Studionet through standard EIP-1193 methods", async () => {

@@ -40,6 +40,7 @@ export default function ActivityPage() {
   async function ensureWallet(): Promise<string> {
     const address = wallet.address || await wallet.connect();
     if (!wallet.correctNetwork) await wallet.switchNetwork();
+    if (!wallet.isCurrent(address)) throw new Error("Wallet changed; review the transaction before submitting again");
     return address;
   }
 

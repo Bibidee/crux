@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 export const CHAIN_ID = 61999;
 export const CHAIN_HEX = `0x${CHAIN_ID.toString(16)}`;
@@ -24,6 +24,10 @@ export function injectedProvider(): Eip1193Provider | null {
 
 export function normalizeAccounts(result: unknown): string[] {
   return Array.isArray(result) ? result.filter((x): x is string => typeof x === "string") : [];
+}
+
+export function sameWallet(left: string | null | undefined, right: string | null | undefined): boolean {
+  return !!left && !!right && left.toLowerCase() === right.toLowerCase();
 }
 
 async function accounts(request = false): Promise<string[]> {
@@ -56,17 +60,26 @@ export async function ensureStudionet(): Promise<void> {
   }
 }
 
-export function useInjectedWallet() {
+export type InjectedWallet = {
+  address: string | null; chainId: number | null; ready: boolean; connected: boolean; correctNetwork: boolean;
+  hasProvider: boolean; connect: () => Promise<string>; disconnect: () => void; refresh: () => Promise<void>;
+  switchNetwork: () => Promise<void>; isCurrent: (address: string) => boolean;
+};
+
+function useWalletState(): InjectedWallet {
   const [address, setAddress] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const [disconnected, setDisconnected] = useState(false);
+  const generation = useRef(0);
 
   const refresh = useCallback(async () => {
     const provider = injectedProvider();
     if (!provider) { setAddress(null); setChainId(null); setReady(true); return; }
+    const requestGeneration = ++generation.current;
     try {
       const [xs, rawChain] = await Promise.all([accounts(false), provider.request({ method: "eth_chainId" })]);
+      if (requestGeneration !== generation.current) return;
       setAddress(disconnected ? null : (xs[0] || null));
       setChainId(typeof rawChain === "string" ? parseInt(rawChain, 16) : null);
     } finally { setReady(true); }
@@ -87,10 +100,12 @@ export function useInjectedWallet() {
   }, [refresh]);
 
   const connect = useCallback(async () => {
+    const requestGeneration = ++generation.current;
     setDisconnected(false);
     const provider = injectedProvider();
     if (!provider) throw new Error("Install or open an injected EIP-1193 wallet to continue");
     const xs = await accounts(true);
+    if (requestGeneration !== generation.current) throw new Error("Wallet connection was superseded");
     if (!xs[0]) throw new Error("No wallet account was returned");
     await ensureStudionet();
     await refresh();
@@ -98,6 +113,7 @@ export function useInjectedWallet() {
   }, [refresh]);
 
   const disconnect = useCallback(() => {
+    generation.current += 1;
     setDisconnected(true);
     setAddress(null);
   }, []);
@@ -105,5 +121,19 @@ export function useInjectedWallet() {
   return {
     address, chainId, ready, connected: !!address, correctNetwork: chainId === CHAIN_ID,
     hasProvider: !!injectedProvider(), connect, disconnect, refresh, switchNetwork: ensureStudionet,
+    isCurrent: (candidate: string) => !disconnected && sameWallet(address, candidate),
   };
+}
+
+const WalletContext = createContext<InjectedWallet | null>(null);
+
+export function WalletProvider({ children }: { children: React.ReactNode }) {
+  const wallet = useWalletState();
+  return createElement(WalletContext.Provider, { value: wallet }, children);
+}
+
+export function useInjectedWallet(): InjectedWallet {
+  const wallet = useContext(WalletContext);
+  if (!wallet) throw new Error("useInjectedWallet must be used inside WalletProvider");
+  return wallet;
 }

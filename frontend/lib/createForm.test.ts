@@ -7,8 +7,12 @@ describe("create form validation", () => {
   it("rejects empty initial financial fields", () => {
     expect(validateCreateForm({ ...complete, bounty: "", hours: "" })).toBeTruthy();
   });
-  it("rejects out-of-range bounty and duration", () => {
-    expect(validateCreateForm({ ...complete, bounty: "0", hours: "48" })).toContain("Bounty");
+  it("enforces the contract bounty range", () => {
+    for (const bounty of ["0", "0.0009", "11"]) expect(validateCreateForm({ ...complete, bounty, hours: "48" })).toContain("Bounty");
+    for (const bounty of ["abc", "1e2"]) expect(validateCreateForm({ ...complete, bounty, hours: "48" })).toContain("valid");
+    for (const bounty of ["0.001", "1", "2", "5", "10"]) expect(validateCreateForm({ ...complete, bounty, hours: "48" })).toBeNull();
+  });
+  it("rejects an invalid duration", () => {
     expect(validateCreateForm({ ...complete, bounty: "0.1", hours: "0.1" })).toContain("window");
   });
   it("accepts a complete valid case", () => {

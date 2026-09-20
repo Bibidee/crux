@@ -11,6 +11,23 @@ This repository is locked to **GenLayer Studionet**:
 - explorer: `https://explorer-studio.genlayer.com`
 - browser wallet: injected **EIP-1193 only** (`window.ethereum`), no Snaps
 
+## Live product
+
+- Website: [crux-end.vercel.app](https://crux-end.vercel.app)
+- Network: GenLayer Studionet (`61999`)
+- Registry: [`0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235`](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235)
+
+### Quick demo path
+
+1. Open the website and connect an injected EIP-1193 wallet.
+2. Switch the wallet to GenLayer Studionet, chain `61999`.
+3. Browse an open case or create a bounded evidence bounty.
+4. Submit one exact fact with its public source URL using the commit step.
+5. Return to the same browser session and reveal the evidence.
+6. Watch the submission move through verification and, when decisive, the case outcome and settlement.
+
+The commit–reveal flow keeps the source and fact private until the reservation is on-chain. Do not clear site data between commit and reveal because the browser-held salt is required for the second transaction.
+
 ## Why the contracts are split
 
 Crux deliberately separates three responsibilities.

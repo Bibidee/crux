@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DecodedDeployData, GenLayerClient, TransactionHash } from "genlayer-js/types";
 import { TransactionStatus } from "genlayer-js/types";
-import { isFinalizedSuccessfulReceipt } from "./receiptSafety.js";
+import { isFinalizedSuccessfulReceipt } from "../scripts/receiptSafety.js";
 
 async function deploy(client: GenLayerClient<any>, file: string, args: unknown[] = [],
                       onSubmitted?: (hash: string, sourceSha256: string) => void) {

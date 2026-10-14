@@ -421,3 +421,30 @@ def test_late_judge_callback_cannot_close_expired_stage(direct_vm, direct_deploy
     assert registry.get_credit(addr(direct_bob)) == str(BOND)
     assert registry.get_case(case_id)["status"] == "OPEN"
     assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_decisive_closure_must_include_the_candidate_evidence(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id = open_case(direct_vm, registry, direct_alice)
+    submission_id = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/licence", "The upstream licence permits commercial redistribution.",
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(submission_id, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The upstream licence supports permission.",
+    }))
+
+    with pytest.raises(Exception, match="a decisive closure must include its candidate evidence"):
+        registry.record_closure(submission_id, json.dumps({
+            "outcome": "OUTCOME_A", "sufficient": True,
+            "decisive_evidence_ids": ["b-1"], "basis": "The case is decidable.",
+        }))
+
+    assert registry.get_submission(submission_id)["status"] == "CLOSURE_PENDING"
+    assert registry.get_case(case_id)["status"] == "OPEN"
+    assert registry.get_credit(addr(direct_bob)) == "0"
+    assert registry.get_stats()["accounting_balanced"] is True

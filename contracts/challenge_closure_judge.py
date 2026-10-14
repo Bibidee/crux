@@ -71,6 +71,14 @@ def _judge(question: str, decision_rule: str, outcome_a: str, outcome_b: str,
         raise gl.vm.UserError("[EXPECTED] malformed evidence packet") from None
     if not isinstance(evidence, list) or not evidence:
         raise gl.vm.UserError("[EXPECTED] evidence packet must be a non-empty list")
+    evidence_ids = []
+    for item in evidence:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"]:
+            raise gl.vm.UserError("[EXPECTED] every evidence item must have an id")
+        evidence_ids.append(item["id"])
+    if len(set(evidence_ids)) != len(evidence_ids):
+        raise gl.vm.UserError("[EXPECTED] evidence ids must be unique")
+    known_evidence_ids = set(evidence_ids)
 
     def leader_fn() -> dict:
         prompt = (
@@ -86,7 +94,13 @@ def _judge(question: str, decision_rule: str, outcome_a: str, outcome_b: str,
             + _json({"question": question, "decision_rule": decision_rule, "outcome_a": outcome_a,
                      "outcome_b": outcome_b, "verified_evidence": evidence})
         )
-        return _normalize(gl.nondet.exec_prompt(prompt, response_format="json"))
+        result = _normalize(gl.nondet.exec_prompt(prompt, response_format="json"))
+        decisive_ids = result["decisive_evidence_ids"]
+        if len(set(decisive_ids)) != len(decisive_ids):
+            raise gl.vm.UserError("[LLM_ERROR] decisive evidence ids must be unique")
+        if any(evidence_id not in known_evidence_ids for evidence_id in decisive_ids):
+            raise gl.vm.UserError("[LLM_ERROR] decisive evidence id is not in the evidence packet")
+        return result
 
     def validator_fn(leader_result: gl.vm.Result) -> bool:
         if not isinstance(leader_result, gl.vm.Return):
@@ -94,7 +108,11 @@ def _judge(question: str, decision_rule: str, outcome_a: str, outcome_b: str,
         try:
             own = leader_fn()
             proposed = _normalize(leader_result.calldata)
-            return own["outcome"] == proposed["outcome"] and own["sufficient"] == proposed["sufficient"]
+            return (
+                own["outcome"] == proposed["outcome"]
+                and own["sufficient"] == proposed["sufficient"]
+                and sorted(own["decisive_evidence_ids"]) == sorted(proposed["decisive_evidence_ids"])
+            )
         except Exception:
             return False
 

@@ -20,6 +20,7 @@ V1 pays a contributor as soon as a verified fact makes the case decidable. V2 ad
 8. Permissionless finalization settles bounty and refundable bonds into recipient-bound credits. Users separately withdraw their own credit.
 
 Exact approved parameters and settlement cases are in [`CHALLENGE_V2_SPEC.md`](CHALLENGE_V2_SPEC.md).
+The separate, unexecuted Studionet validation checklist is [`CHALLENGE_V2_LIVE_SMOKE_TEST.md`](CHALLENGE_V2_LIVE_SMOKE_TEST.md); it requires separate approval for funded test writes.
 
 ## Trust boundaries and contracts
 
@@ -109,6 +110,6 @@ genlayer deploy         # V2 script runs; V1 deploy script skips
 Remove-Item Env:CRUX_DEPLOY_V2_ONLY
 ```
 
-If a transaction fails or the command is interrupted, do not rerun deployment. Inspect the saved `deployments/challenge-v2-studionet.json` partial manifest, transaction receipts/traces, and the explorer first; reconcile the exact completed stage before any resumed write. The current deployment script refuses to overwrite an existing manifest. Check that all four addresses and `configureTxHash` are present and `status` is `READY`, then query each contract schema and `get_stats` on the V2 Registry.
+If a transaction fails or the command is interrupted, do not rerun deployment. Inspect the saved `deployments/challenge-v2-studionet.json` partial manifest, transaction receipts/traces, and the explorer first; reconcile the exact completed stage before any resumed write. The current deployment script refuses to overwrite an existing manifest. It records each submitted transaction hash and the SHA-256 of the exact contract source bytes, requires each setup write to be both `FINALIZED` and `FINISHED_WITH_RETURN`, then writes `status: DEPLOYED_PENDING_VERIFICATION` rather than claiming full readiness. Independently verify all four addresses, compare source hashes with the deployed transaction input, check Registry constructor bindings, the finalized `configureTxHash`, every child `registry_address`, and V2 Registry `get_stats` including zero initial escrow and balanced accounting. Only after those readbacks succeed should the manifest status be changed to `READY`; if any check is ambiguous, preserve the pending status and stop.
 
 Only after contract verification and a further frontend deployment approval should a production frontend configuration be considered. This implementation does not make or authorize that configuration change.

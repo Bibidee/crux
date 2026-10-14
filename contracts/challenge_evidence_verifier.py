@@ -59,6 +59,8 @@ def _normalize(raw) -> dict:
     output["basis"] = basis[:900]
     if status == "VERIFIED" and not all(output[field] for field in FIELDS):
         raise gl.vm.UserError("[LLM_ERROR] VERIFIED requires every substantive verification flag")
+    if status == "REJECTED" and all(output[field] for field in FIELDS):
+        raise gl.vm.UserError("[LLM_ERROR] REJECTED requires a failed substantive verification flag")
     if status == "SOURCE_UNAVAILABLE" and any(output[field] for field in FIELDS):
         raise gl.vm.UserError("[LLM_ERROR] unavailable source cannot carry positive verification flags")
     return output

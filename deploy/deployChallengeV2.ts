@@ -1,12 +1,17 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DecodedDeployData, GenLayerClient, TransactionHash } from "genlayer-js/types";
 import { TransactionStatus } from "genlayer-js/types";
+import { isFinalizedSuccessfulReceipt } from "./receiptSafety.js";
 
-async function deploy(client: GenLayerClient<any>, file: string, args: unknown[] = [], onSubmitted?: (hash: string) => void) {
-  const code = new Uint8Array(readFileSync(path.resolve(process.cwd(), file)));
+async function deploy(client: GenLayerClient<any>, file: string, args: unknown[] = [],
+                      onSubmitted?: (hash: string, sourceSha256: string) => void) {
+  const source = readFileSync(path.resolve(process.cwd(), file));
+  const sourceSha256 = createHash("sha256").update(source).digest("hex");
+  const code = new Uint8Array(source);
   const hash = await client.deployContract({ code, args } as any);
-  onSubmitted?.(String(hash));
+  onSubmitted?.(String(hash), sourceSha256);
   console.log(`Submitted ${file}: ${String(hash)}`);
   const receipt: any = await client.waitForTransactionReceipt({
     hash: hash as TransactionHash,
@@ -14,15 +19,14 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
     retries: 240,
     interval: 5000,
   } as any);
-  const statusName = receipt?.statusName ?? receipt?.status_name;
-  const ok = statusName === "FINALIZED" || statusName === "ACCEPTED"
-    || receipt?.status === 5 || receipt?.status === 6 || receipt?.status === 7
-    || receipt?.result === 6;
-  if (!ok) throw new Error(`Deployment failed for ${file}: ${JSON.stringify(receipt)}`);
+  if (!isFinalizedSuccessfulReceipt(receipt)) {
+    throw new Error(`Deployment did not finalize with a successful execution for ${file}: ${JSON.stringify(receipt)}`);
+  }
   const address = (receipt?.txDataDecoded as DecodedDeployData | undefined)?.contractAddress
     || receipt?.data?.contract_address || receipt?.contract_address || receipt?.recipient;
   if (!address) throw new Error(`No contract address returned for ${file}`);
-  return { address: String(address), hash: String(hash), txHash: String(hash) };
+  return { address: String(address), hash: String(hash), txHash: String(hash),
+    sourceFile: file, sourceSha256 };
 }
 
 export default async function main(client: GenLayerClient<any>) {
@@ -44,7 +48,8 @@ export default async function main(client: GenLayerClient<any>) {
   }
   mkdirSync(path.dirname(manifestPath), { recursive: true });
   const contracts: Record<string, unknown> = {};
-  const partialManifest = (stage: string, pendingTransaction?: { file: string; txHash: string }) => {
+  const partialManifest = (stage: string,
+                           pendingTransaction?: { file: string; txHash: string; sourceSha256?: string }) => {
     writeFileSync(manifestPath, JSON.stringify({
       product: "Crux Challenge V2", network: "studionet", chainId: 61999,
       rpc: "https://studio.genlayer.com/api", status: stage, deployedAt: new Date().toISOString(),
@@ -53,8 +58,8 @@ export default async function main(client: GenLayerClient<any>) {
   };
   const deployAndRecord = async (key: string, file: string, args: unknown[] = []) => {
     partialManifest(`${key.toUpperCase()}_DEPLOYING`);
-    const result = await deploy(client, file, args, (txHash) => partialManifest(
-      `${key.toUpperCase()}_SUBMITTED`, { file, txHash },
+    const result = await deploy(client, file, args, (txHash, sourceSha256) => partialManifest(
+      `${key.toUpperCase()}_SUBMITTED`, { file, txHash, sourceSha256 },
     ));
     contracts[key] = result;
     partialManifest(`${key.toUpperCase()}_FINALIZED`);
@@ -79,24 +84,22 @@ export default async function main(client: GenLayerClient<any>) {
     retries: 240,
     interval: 5000,
   } as any);
-  const statusName = configureReceipt?.statusName ?? configureReceipt?.status_name;
-  const configured = statusName === "FINALIZED" || statusName === "ACCEPTED"
-    || configureReceipt?.status === 5 || configureReceipt?.status === 6 || configureReceipt?.status === 7
-    || configureReceipt?.result === 6;
-  if (!configured) throw new Error(`V2 component binding failed: ${JSON.stringify(configureReceipt)}`);
+  if (!isFinalizedSuccessfulReceipt(configureReceipt)) {
+    throw new Error(`V2 component binding did not finalize with a successful execution: ${JSON.stringify(configureReceipt)}`);
+  }
 
   const manifest = {
     product: "Crux Challenge V2",
     network: "studionet",
     chainId: 61999,
     rpc: "https://studio.genlayer.com/api",
-    status: "READY",
+    status: "DEPLOYED_PENDING_VERIFICATION",
     explorer: "https://explorer-studio.genlayer.com",
     deployedAt: new Date().toISOString(),
     contracts: { registry, verifier, judge, challengeAdjudicator,
       configureHash: String(configureHash), configureTxHash: String(configureHash) },
   };
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
-  console.log(`Wrote ${manifestPath}; V1 deployment files and frontend environment were not touched.`);
+  console.log(`Wrote ${manifestPath} for independent readback verification; V1 deployment files and frontend environment were not touched.`);
   return manifest;
 }

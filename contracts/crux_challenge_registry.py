@@ -616,6 +616,19 @@ class CruxChallengeRegistry(gl.Contract):
         outcome = result.get("outcome")
         if outcome not in CLOSURE_OUTCOMES:
             raise gl.vm.UserError("[EXPECTED] unknown closure outcome")
+        decisive_ids = result.get("decisive_evidence_ids", [])
+        if not isinstance(decisive_ids, list) or len(decisive_ids) > 8:
+            raise gl.vm.UserError("[EXPECTED] invalid decisive evidence id list")
+        if any(not isinstance(evidence_id, str) for evidence_id in decisive_ids):
+            raise gl.vm.UserError("[EXPECTED] invalid decisive evidence id")
+        if len(set(decisive_ids)) != len(decisive_ids):
+            raise gl.vm.UserError("[EXPECTED] decisive evidence ids must be unique")
+        available_ids = {item.get("id") for item in case["accepted_evidence"]}
+        available_ids.add(submission_id)
+        if any(evidence_id not in available_ids for evidence_id in decisive_ids):
+            raise gl.vm.UserError("[EXPECTED] decisive evidence id is not in the accepted graph")
+        if outcome in ("OUTCOME_A", "OUTCOME_B") and submission_id not in decisive_ids:
+            raise gl.vm.UserError("[EXPECTED] a decisive closure must include its candidate evidence")
         submission["closure"] = result
 
         if case["status"] != "OPEN" or _now() >= int(case["closes_at"]):

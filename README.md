@@ -11,6 +11,10 @@ This repository is locked to **GenLayer Studionet**:
 - explorer: `https://explorer-studio.genlayer.com`
 - browser wallet: injected **EIP-1193 only** (`window.ethereum`), no Snaps
 
+### Challenge V2 safety notice
+
+Crux V1 remains the existing live three-contract product. The deployed Challenge V2 Registry is superseded by a security defect in challenge evidence invalidation; do not create or fund V2 cases. This source tree now defaults all V2 writes off and preserves read-only access. That safeguard reaches `crux-end.vercel.app` only after a separately approved frontend publication; no Vercel environment or production deployment is changed here. The corrected V2.1 candidate is not deployed. See [`docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md`](docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md).
+
 ## Live product
 
 - Website: [crux-end.vercel.app](https://crux-end.vercel.app)
@@ -43,6 +47,8 @@ This avoids collapsing two different questions into one LLM call: **is the fact 
 Challenge V2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the component boundaries, threat model, demo instructions, and deployment checklist are in [`docs/CHALLENGE_V2.md`](docs/CHALLENGE_V2.md).
 
 The four V2 contracts are deployed on Studionet and the production frontend is configured to the V2 Registry; setup receipts and read-only verification are recorded in [`deployments/challenge-v2-studionet.json`](deployments/challenge-v2-studionet.json) and [`docs/CHALLENGE_V2_RELEASE_EVIDENCE.md`](docs/CHALLENGE_V2_RELEASE_EVIDENCE.md). The Registry has no cases or funds. A security audit found that an overturned provisional submission remains in the active evidence graph when an insufficient-evidence challenge reopens a case. A local fix and regression test are present, but the deployed contract does not include that fix. Do not create funded V2 cases or represent V2 as submission-ready until a corrected deployment is separately authorized and verified. The existing V1 three-contract trust architecture, addresses, and live flow remain unchanged.
+
+The initial V2 remediation did not cover a challenge targeting an earlier decisive item: the adjudicator lacked the selected target ID and the Registry could remove a different fact. V2.1 fixes both issues, but is source-only and not deployed. The V2 writes-off setting in this repository takes effect on `crux-end.vercel.app` only after a separately approved publication.
 
 ## Main flow
 

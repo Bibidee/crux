@@ -30,7 +30,7 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
 }
 
 export default async function main(client: GenLayerClient<any>) {
-  if (process.env.CRUX_DEPLOY_V2_ONLY !== "1") {
+  if (process.env.CRUX_DEPLOY_V2_ONLY !== "1" || process.env.CRUX_DEPLOY_V2_1_ONLY === "1") {
     console.log("Skipping Challenge V2 deployment. Set CRUX_DEPLOY_V2_ONLY=1 for the isolated V2 deployment workflow.");
     return { skipped: true };
   }

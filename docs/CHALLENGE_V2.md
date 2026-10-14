@@ -1,10 +1,12 @@
 # Crux Challenge V2
 
+> **Superseded security record (2026-10-15):** The V2.1 audit found that the original remediation removed only the provisional closing submission, while a challenge can target any decisive evidence ID. V2's adjudicator also was not passed the selected target. See [`CHALLENGE_V2_1_RELEASE_CANDIDATE.md`](CHALLENGE_V2_1_RELEASE_CANDIDATE.md) for the corrected review binding, invalidation rules, tests, and isolated deployment path. This original document remains for V2 design/economic history; its V2 deployment runbook is superseded and must not be used for replacement deployment.
+
 ## Status and scope
 
 Challenge V2 is a separately implemented protocol. The owner approved its economic rules on 2026-10-14. Its four contracts are deployed on Studionet chain `61999`, and the production frontend is configured to the V2 Registry. The Registry readback shows zero cases, submissions, challenges, escrow, bonds, credits, and withdrawals. No funded V2 lifecycle has been demonstrated. Read-only deployment evidence is in [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md).
 
-**Release status: NOT READY.** The deployed Registry has an evidence-graph integrity defect on the overturn-to-insufficient/reopen path. The local source fix removes the overturned decisive submission from the active accepted graph and clears the closing pointer; the deployed contract has not been changed. No funded case or challenge should be created on the current deployment. Correcting Studionet requires a separately authorized replacement deployment; this audit did not redeploy.
+**Release status: NOT READY.** The deployed Registry has an evidence-graph integrity defect on challenge overturns. Its prior local correction removed only the closing submission; it did not reliably remove the exact challenged fact when the challenge named an earlier decisive item, and the adjudicator did not receive the target ID. The V2.1 candidate corrects both paths, but no corrected contract is deployed. No funded case or challenge should be created on the current deployment.
 
 This work does not modify the deployed Registry, EvidenceVerifier, ClosureJudge, their addresses, V1 data, production environment variables, or Vercel. The existing three-contract V1 trust architecture remains unchanged. V2 is an additive four-contract architecture because counterevidence review is a new adjudication responsibility.
 
@@ -47,7 +49,7 @@ V1 and V2 have distinct registries, child addresses, manifests, and frontend con
 - Challenge attempts are capped at eight per provisional decision. Reveal and review timeouts have bounded recovery paths.
 - Credit withdrawals require the transaction sender to equal the recipient, clear the credit before the external transfer, and cannot be repeated against the same balance.
 - Commitments bind chain `61999`, the V2 Registry address, case, decision/evidence IDs as applicable, wallet, source, fact, and salt. Salts and unrevealed claims are stored in browser local storage only until reveal; disconnecting or changing wallets does not intentionally erase them.
-- The corrected local Registry removes the challenged provisional submission from `accepted_evidence` when adjudication overturns to `INSUFFICIENT_EVIDENCE`, preserving the submission as history but preventing its reuse by the next closure decision. The deployed Registry lacks this correction; this is a release-blocking mismatch, not a live safeguard.
+- The V2.1 Registry removes the exact challenged item from `accepted_evidence` on either successful overturn, preserves submission/challenge history, and clears stale close pointers when reopening. The adjudicator receives and replays the exact target ID, and the Registry requires its callback to echo that same ID. The deployed V2 Registry lacks these protections; this is a release-blocking mismatch, not a live safeguard.
 
 ## Threat model and remaining assumptions
 

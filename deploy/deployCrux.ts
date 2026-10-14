@@ -25,8 +25,8 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
 }
 
 export default async function main(client: GenLayerClient<any>) {
-  if (process.env.CRUX_DEPLOY_V2_ONLY === "1") {
-    console.log("Skipping V1 deployment because CRUX_DEPLOY_V2_ONLY=1.");
+  if (process.env.CRUX_DEPLOY_V2_ONLY === "1" || process.env.CRUX_DEPLOY_V2_1_ONLY === "1") {
+    console.log("Skipping V1 deployment because an isolated V2 deployment mode is active.");
     return;
   }
   const chainId = Number((client as any)?.chain?.id);

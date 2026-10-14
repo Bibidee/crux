@@ -1,0 +1,30 @@
+{
+  "product": "Crux Challenge V2.1",
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "explorer": "https://explorer-studio.genlayer.com",
+  "status": "NOT_DEPLOYED",
+  "supersedes": {
+    "product": "Crux Challenge V2",
+    "registry": "0x1BBec07518527A73e35333cD0d266ED20D032c6f",
+    "reason": "A successful challenge targeting a decisive evidence item other than the closing submission could leave the overturned item in the accepted graph after reopening. The prior adjudicator also did not receive the committed challenged evidence ID."
+  },
+  "deploymentSourceCommit": null,
+  "deployer": null,
+  "sourceHashes": {
+    "registry": "8996c44e1e5ce6e9a08891af2157bd267464b0dee13d015a1ec0d934dfa1f2e6",
+    "verifier": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83",
+    "judge": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9",
+    "challengeAdjudicator": "d007976f3fb6fed5e78c11e61664255ad5db95438f525fc8843652e44a5bae10"
+  },
+  "expectedSetupTransactions": [
+    "deploy fresh Crux Challenge Registry",
+    "deploy fresh Evidence Verifier bound to the new Registry",
+    "deploy fresh Closure Judge bound to the new Registry",
+    "deploy fresh Challenge Adjudicator bound to the new Registry",
+    "configure_components once with all three new child addresses"
+  ],
+  "contracts": {},
+  "transactions": {}
+}

@@ -775,7 +775,7 @@ class CruxChallengeRegistry(gl.Contract):
         adjudicator.emit(on="finalized").review_challenge(
             challenge_id, str(gl.message.contract_address), case["question"], case["decision_rule"],
             case["outcome_a"], case["outcome_b"], case["source_policy"], case["provisional_outcome"],
-            _json(decisive_items), source_url, counterclaim,
+            challenge["challenged_evidence_id"], _json(decisive_items), source_url, counterclaim,
         )
 
     def _release_challenge_bond(self, challenge: dict) -> None:
@@ -803,6 +803,8 @@ class CruxChallengeRegistry(gl.Contract):
         status = result.get("status")
         if status not in ("SOURCE_UNAVAILABLE", "CHALLENGE_REJECTED", "VERDICT_UPHELD", "VERDICT_OVERTURNED"):
             raise gl.vm.UserError("[EXPECTED] invalid challenge review status")
+        if result.get("challenged_evidence_id") != challenge["challenged_evidence_id"]:
+            raise gl.vm.UserError("[EXPECTED] challenge review targets different evidence")
         challenge["review"] = result
         challenge["settled_at"] = _iso()
         case["pending_challenge"] = ""
@@ -830,15 +832,23 @@ class CruxChallengeRegistry(gl.Contract):
             original = self._submission(case["provisional_submission"])
             original["status"] = "OVERTURNED"
             original["settled_at"] = _iso()
+            challenged_evidence_id = challenge["challenged_evidence_id"]
+            case["accepted_evidence"] = [
+                item for item in case["accepted_evidence"]
+                if item.get("id") != challenged_evidence_id
+            ]
+            if challenged_evidence_id in case["submission_ids"]:
+                challenged = original if challenged_evidence_id == original["id"] else self._submission(challenged_evidence_id)
+                challenged["status"] = "OVERTURNED"
+                challenged["settled_at"] = _iso()
+                self._save_submission(challenged)
             case["challenge_status"] = "VERDICT_OVERTURNED"
             if new_outcome == "INSUFFICIENT_EVIDENCE":
-                # Keep the submission and challenge records as immutable history,
-                # but do not let evidence that lost its decisive standing remain
-                # in the active accepted graph used by later verification/judging.
-                case["accepted_evidence"] = [
-                    item for item in case["accepted_evidence"]
-                    if item.get("id") != original["id"]
-                ]
+                # Keep submission/challenge history, but remove the exact
+                # challenged fact from the active graph. The challenged fact
+                # can be an earlier decisive submission or a baseline item.
+                if challenged_evidence_id != original["id"]:
+                    original["status"] = "VERIFIED_NON_CLOSING"
                 self._release_challenge_bond(challenge)
                 self._release_bond(original, original["contributor"])
                 case["status"] = "REOPENED"

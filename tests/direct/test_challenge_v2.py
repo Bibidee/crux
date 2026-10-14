@@ -79,14 +79,16 @@ def challenge_commitment(vm, case_id, decision_id, challenged_evidence_id, chall
                                      sort_keys=True).encode()).hexdigest()
 
 
-def submit_challenge(vm, registry, case_id, decision_id, challenger, callback_wallet):
+def submit_challenge(vm, registry, case_id, decision_id, challenger, callback_wallet,
+                     challenged_evidence_id=None):
+    challenged_evidence_id = challenged_evidence_id or decision_id
     source_url = "https://example.com/counterevidence"
     counterclaim = "The same version's official licence prohibits commercial redistribution."
     salt = "22" * 32
-    digest = challenge_commitment(vm, case_id, decision_id, decision_id, challenger,
+    digest = challenge_commitment(vm, case_id, decision_id, challenged_evidence_id, challenger,
                                   source_url, counterclaim, salt)
     vm.sender, vm.value = challenger, BOND
-    challenge_id = registry.commit_challenge(case_id, decision_id, decision_id, digest)
+    challenge_id = registry.commit_challenge(case_id, decision_id, challenged_evidence_id, digest)
     vm.value = 0
     registry.reveal_challenge(challenge_id, source_url, counterclaim, salt)
     assert registry.get_challenge(challenge_id)["status"] == "REVIEW_PENDING"
@@ -109,10 +111,47 @@ def review(status, new_outcome="OUTCOME_A", **overrides):
     result = {
         "status": status, "same_subject": True, "source_allowed": True,
         "claim_supported": True, "correct_time_scope": True, "contradicts": True,
-        "material": True, "new_outcome": new_outcome, "basis": "Independent challenge review result."
+        "material": True, "new_outcome": new_outcome, "basis": "Independent challenge review result.",
+        "challenged_evidence_id": "cs-1",
     }
     result.update(overrides)
     return json.dumps(result)
+
+
+def create_composed_provisional(vm, registry, sponsor, contributor, callback_wallet):
+    case_id = open_case(vm, registry, sponsor)
+    first_id = submit_evidence(
+        vm, registry, case_id, contributor,
+        "https://example.com/first-decisive-fact", "A first fact required by the decision rule.",
+    )
+    vm.sender = callback_wallet
+    registry.record_verification(first_id, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The first fact is independently supported.",
+    }))
+    registry.record_closure(first_id, json.dumps({
+        "outcome": "INSUFFICIENT_EVIDENCE", "sufficient": False,
+        "decisive_evidence_ids": [], "basis": "A second decisive fact is still missing.",
+    }))
+
+    second_id = submit_evidence(
+        vm, registry, case_id, contributor,
+        "https://example.com/second-decisive-fact", "A second fact that completes the decision rule.",
+    )
+    vm.sender = callback_wallet
+    registry.record_verification(second_id, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The second fact is independently supported.",
+    }))
+    registry.record_closure(second_id, json.dumps({
+        "outcome": "OUTCOME_A", "sufficient": True,
+        "decisive_evidence_ids": [first_id, second_id],
+        "basis": "Both facts are decisive under the original rule.",
+    }))
+    assert registry.get_case(case_id)["status"] == "PROVISIONAL_CLOSURE"
+    return case_id, first_id, second_id
 
 
 def test_provisional_bounty_locked_and_permissionless_finalize(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
@@ -243,6 +282,102 @@ def test_insufficient_overturn_reopens_without_releasing_bounty(direct_vm, direc
             "decisive_evidence_ids": [submission_id, next_submission],
             "basis": "An overturned fact must not be reused after reopening.",
         }))
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_insufficient_overturn_removes_the_exact_prior_decisive_fact_and_keeps_other_evidence(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, challenged_id, closing_id = create_composed_provisional(
+        direct_vm, registry, direct_alice, direct_bob, direct_charlie,
+    )
+    challenge_id = submit_challenge(
+        direct_vm, registry, case_id, closing_id, direct_charlie, direct_charlie,
+        challenged_evidence_id=challenged_id,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(challenge_id, review(
+        "VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE", challenged_evidence_id=challenged_id,
+    ))
+
+    case = registry.get_case(case_id)
+    active_ids = [item["id"] for item in case["accepted_evidence"]]
+    assert case["status"] == "REOPENED"
+    assert challenged_id not in active_ids
+    assert closing_id in active_ids
+    assert case["closing_submission"] == ""
+    assert registry.get_submission(challenged_id)["status"] == "OVERTURNED"
+    assert registry.get_submission(closing_id)["status"] == "VERIFIED_NON_CLOSING"
+    assert registry.get_challenge(challenge_id)["challenged_evidence_id"] == challenged_id
+    assert challenged_id in [item["id"] for item in registry.list_submissions(case_id)]
+    assert registry.get_stats()["accounting_balanced"] is True
+
+    registry.reopen_case(case_id)
+    next_id = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/replacement", "A fresh fact after the challenge invalidated the earlier one.",
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(next_id, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The replacement fact is independently verified.",
+    }))
+    with pytest.raises(Exception, match="decisive evidence id is not in the accepted graph"):
+        registry.record_closure(next_id, json.dumps({
+            "outcome": "OUTCOME_A", "sufficient": True,
+            "decisive_evidence_ids": [challenged_id, next_id],
+            "basis": "An overturned fact must not be reused.",
+        }))
+    registry.record_closure(next_id, json.dumps({
+        "outcome": "OUTCOME_A", "sufficient": True,
+        "decisive_evidence_ids": [closing_id, next_id],
+        "basis": "The remaining valid fact and new evidence satisfy the rule.",
+    }))
+    assert registry.get_case(case_id)["status"] == "PROVISIONAL_CLOSURE"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_opposite_outcome_overturn_also_removes_the_specific_challenged_fact(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, challenged_id, closing_id = create_composed_provisional(
+        direct_vm, registry, direct_alice, direct_bob, direct_charlie,
+    )
+    challenge_id = submit_challenge(
+        direct_vm, registry, case_id, closing_id, direct_charlie, direct_charlie,
+        challenged_evidence_id=challenged_id,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(challenge_id, review(
+        "VERDICT_OVERTURNED", "OUTCOME_B", challenged_evidence_id=challenged_id,
+    ))
+
+    case = registry.get_case(case_id)
+    active_ids = [item["id"] for item in case["accepted_evidence"]]
+    assert case["status"] == "CHALLENGE_RESOLVED"
+    assert challenged_id not in active_ids
+    assert closing_id in active_ids
+    assert registry.get_submission(challenged_id)["status"] == "OVERTURNED"
+    registry.finalize_provisional(case_id)
+    case = registry.get_case(case_id)
+    assert case["status"] == "CLOSED" and case["final_outcome"] == "OUTCOME_B"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_challenge_callback_must_match_the_committed_evidence_target(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    challenge_id = submit_challenge(direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie)
+    direct_vm.sender = direct_charlie
+    with pytest.raises(Exception, match="challenge review targets different evidence"):
+        registry.record_challenge_review(challenge_id, review(
+            "VERDICT_UPHELD", contradicts=False, material=False,
+            challenged_evidence_id="cs-forged",
+        ))
+    assert registry.get_challenge(challenge_id)["status"] == "REVIEW_PENDING"
+    assert registry.get_case(case_id)["pending_challenge"] == challenge_id
     assert registry.get_stats()["accounting_balanced"] is True
 
 

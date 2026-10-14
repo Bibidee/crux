@@ -3,7 +3,7 @@
 import { cloneElement, FormEvent, ReactElement, useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useInjectedWallet } from "@/lib/wallet";
-import { CHALLENGE_REGISTRY_ADDRESS, readChallengeRegistry, submitChallengeRegistryWrite, waitForDecision } from "@/lib/crux";
+import { CHALLENGE_REGISTRY_ADDRESS, CHALLENGE_V2_WRITES_ENABLED, readChallengeRegistry, submitChallengeRegistryWrite, waitForDecision } from "@/lib/crux";
 import type { CalldataEncodable } from "genlayer-js/types";
 import { formatGen, shortAddress } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
@@ -146,6 +146,7 @@ export default function ChallengeV2Page() {
   }, [refresh, refreshKey]);
 
   async function runWrite(name: string, functionName: string, args: CalldataEncodable[] = [], value = 0n) {
+    if (!CHALLENGE_V2_WRITES_ENABLED) throw new Error("Challenge V2 writes are paused for the security upgrade. V1 remains available; existing V2 cases and balances are unchanged.");
     if (transactionLock.current) throw new Error("Another transaction is already in progress. Wait for it to finish.");
     if (!wallet.connected || !wallet.address) throw new Error("Connect your injected wallet first.");
     if (!wallet.correctNetwork) throw new Error("Switch your wallet to GenLayer Studionet (chain 61999) first.");
@@ -255,7 +256,7 @@ export default function ChallengeV2Page() {
 
   const original = submissions.find((item) => item.id === caseData?.provisional_submission);
   const challengePending = challenges.find((item) => item.id === caseData?.pending_challenge);
-  const chainReady = wallet.connected && wallet.correctNetwork;
+  const chainReady = CHALLENGE_V2_WRITES_ENABLED && wallet.connected && wallet.correctNetwork;
   const deadline = caseData?.challenge_status === "REVIEW_TIMEOUT_RECOVERY"
     ? caseData.challenge_recovery_deadline : caseData?.challenge_deadline;
   const canChallenge = caseData?.status === "PROVISIONAL_CLOSURE"
@@ -270,6 +271,9 @@ export default function ChallengeV2Page() {
 
     {!CHALLENGE_REGISTRY_ADDRESS ? <div className="error-box challenge-config-note">
       Challenge V2 has not been deployed or configured on this frontend yet. This route is isolated from the live V1 Registry.
+    </div> : null}
+    {!CHALLENGE_V2_WRITES_ENABLED ? <div className="error-box challenge-config-note" role="status">
+      Challenge V2 is read-only while its security upgrade is prepared. Creating cases, evidence or challenges, finalizing, and withdrawing V2 credit are paused. V1 remains available, and existing V2 cases and balances are not moved.
     </div> : null}
 
     <div className="challenge-v2-grid">

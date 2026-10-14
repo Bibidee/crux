@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from tests.direct.conftest import addr, warp
+from tests.direct.conftest import addr, capture, warp
 
 
 def test_v2_verifier_rejects_contradictory_rejected_result(direct_vm, direct_deploy, direct_alice):
@@ -123,10 +123,51 @@ def test_v2_adjudicator_rejects_injected_source_instruction_with_incoherent_over
         adjudicator.review_challenge(
             "ch-poison", addr(direct_alice), "Can package X be redistributed?",
             "Only if the licence permits redistribution.", "Allowed", "Not allowed",
-            "Official upstream sources only.", "OUTCOME_A",
+            "Official upstream sources only.", "OUTCOME_A", "cs-1",
             json.dumps([{"id": "cs-1", "url": "https://example.com/licence",
                          "fact": "The upstream licence permits redistribution.", "kind": "CONTRIBUTED"}]),
             "https://example.com/counter", "The licence prohibits commercial redistribution.",
+        )
+
+
+def test_v2_adjudicator_binds_review_and_callback_to_the_challenged_evidence(direct_vm, direct_deploy, direct_alice):
+    warp(direct_vm)
+    _, messages = capture(direct_vm)
+    adjudicator = direct_deploy("contracts/challenge_adjudicator.py", addr(direct_alice))
+    direct_vm.sender = direct_alice
+    direct_vm.mock_web(r".*example\.com/counter.*", {"status": 200, "body": "The source does not undermine the selected fact."})
+    direct_vm.mock_llm(r'(?s).*"challenged_evidence_id":"cs-target".*', json.dumps({
+        "status": "VERDICT_UPHELD", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "contradicts": False,
+        "material": False, "new_outcome": "OUTCOME_A", "basis": "The counter-source does not undermine the selected fact.",
+    }))
+    decisive = json.dumps([
+        {"id": "cs-target", "url": "https://example.com/first", "fact": "First decisive fact.", "kind": "CONTRIBUTED"},
+        {"id": "cs-other", "url": "https://example.com/second", "fact": "Other decisive fact.", "kind": "CONTRIBUTED"},
+    ])
+    adjudicator.review_challenge(
+        "ch-target", addr(direct_alice), "Can package X be redistributed?",
+        "Only if the licence permits redistribution.", "Allowed", "Not allowed",
+        "Official upstream sources only.", "OUTCOME_A", "cs-target", decisive,
+        "https://example.com/counter", "The licence does not permit commercial redistribution.",
+    )
+
+    assert direct_vm.run_validator() is True
+    result = adjudicator.get_result("ch-target")
+    assert result["challenged_evidence_id"] == "cs-target"
+    assert messages[-1]["on"] == "finalized"
+
+
+def test_v2_adjudicator_rejects_a_challenge_target_outside_its_decisive_packet(direct_vm, direct_deploy, direct_alice):
+    warp(direct_vm)
+    adjudicator = direct_deploy("contracts/challenge_adjudicator.py", addr(direct_alice))
+    direct_vm.sender = direct_alice
+    with pytest.raises(Exception, match="challenged evidence must occur exactly once"):
+        adjudicator.review_challenge(
+            "ch-target-missing", addr(direct_alice), "Question", "Rule", "Allowed", "Prohibited",
+            "Official sources only.", "OUTCOME_A", "cs-missing",
+            json.dumps([{"id": "cs-present", "url": "https://example.com/source", "fact": "Fact", "kind": "CONTRIBUTED"}]),
+            "https://example.com/counter", "A counterclaim.",
         )
 
 

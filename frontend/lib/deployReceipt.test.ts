@@ -10,7 +10,7 @@ describe("V2 deployment receipt safety", () => {
       .filter((file) => file.endsWith(".ts") || file.endsWith(".js"))
       .sort();
 
-    expect(scripts).toEqual(["deployChallengeV2.ts", "deployCrux.ts"]);
+    expect(scripts).toEqual(["deployChallengeV2.ts", "deployChallengeV2_1.ts", "deployCrux.ts"]);
   });
 
   it("keeps the JavaScript receipt helper available outside the CLI auto-entrypoint directory", () => {
@@ -19,6 +19,17 @@ describe("V2 deployment receipt safety", () => {
 
     expect(existsSync(helperPath)).toBe(true);
     expect(readFileSync(entrypointPath, "utf8")).toContain('../scripts/receiptSafety.js');
+  });
+
+  it("makes the versioned V2.1 entrypoint exclusive from the existing V1 and V2 scripts", () => {
+    const v1Path = fileURLToPath(new URL("../../deploy/deployCrux.ts", import.meta.url));
+    const v2Path = fileURLToPath(new URL("../../deploy/deployChallengeV2.ts", import.meta.url));
+    const v21Path = fileURLToPath(new URL("../../deploy/deployChallengeV2_1.ts", import.meta.url));
+    const safetyPath = fileURLToPath(new URL("../../scripts/challengeV2_1Safety.js", import.meta.url));
+    expect(readFileSync(v1Path, "utf8")).toContain("process.env.CRUX_DEPLOY_V2_1_ONLY === \"1\"");
+    expect(readFileSync(v2Path, "utf8")).toContain("process.env.CRUX_DEPLOY_V2_1_ONLY === \"1\"");
+    expect(readFileSync(safetyPath, "utf8")).toContain("CRUX_DEPLOY_V2_1_AUTHORIZED");
+    expect(readFileSync(v21Path, "utf8")).toContain("challenge-v2-1-studionet.json");
   });
 
   it("resolves the RPC from GenLayer CLI's effective chain configuration", () => {

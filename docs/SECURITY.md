@@ -1,10 +1,10 @@
 # Security and failure model
 
-## Challenge V2 release blocker (2026-10-14)
+## Challenge V2 release blocker (2026-10-15)
 
-The deployed Challenge V2 Registry at [`0x1BBec07518527A73e35333cD0d266ED20D032c6f`](https://explorer-studio.genlayer.com/address/0x1BBec07518527A73e35333cD0d266ED20D032c6f) retains an overturned provisional submission in `accepted_evidence` after a challenge changes the verdict to `INSUFFICIENT_EVIDENCE` and reopens the case. A later closure decision can therefore receive evidence whose decisive standing was overturned. The deployed source hash and setup transactions are recorded in [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md).
+The deployed Challenge V2 Registry at [`0x1BBec07518527A73e35333cD0d266ED20D032c6f`](https://explorer-studio.genlayer.com/address/0x1BBec07518527A73e35333cD0d266ED20D032c6f) permits a challenge against any decisive evidence ID, but its previous fix removed only the provisional closing submission. When a challenge targeted an earlier decisive fact, that fact remained in the accepted graph after an overturn and reopen; it could still be cited by a later closure. The adjudicator also did not receive the selected target, so it could not bind the counterclaim to the fact the challenger committed to challenge. The deployed source hash and setup transactions are preserved in [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md).
 
-The local remediation removes that submission from the active accepted graph and clears `closing_submission`, while retaining the original submission and challenge records as history. A direct regression test verifies the old evidence cannot be cited by the next closure callback. This fix is **not** in the deployed immutable Registry. The current deployment has zero cases and zero accounted funds, but it must not be used for funded V2 cases until a corrected Registry is separately authorized, deployed, and independently verified. V1 is unaffected.
+V2.1 removes the exact challenged evidence ID from the active graph on both insufficient-evidence and opposite-outcome overturns, passes that ID to the child adjudicator, requires an exact callback match, preserves history, and clears stale closure references when reopening. Regression tests cover an earlier decisive submission, the retained valid evidence, stale-ID rejection, both overturn outcomes, and accounting conservation. This correction is **not** in the deployed immutable Registry. The current V2 deployment must not be used for funded cases until all four V2.1 contracts are separately authorized, deployed, and independently verified. V1 is unaffected.
 
 ## Prompt injection
 

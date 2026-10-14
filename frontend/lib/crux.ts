@@ -7,6 +7,7 @@ import type { CalldataEncodable, TransactionHash } from "genlayer-js/types";
 import { injectedProvider, normalizeAccounts, RPC_URL, sameWallet, CHAIN_ID } from "./wallet";
 import { serializeReadCacheKey } from "./cache-key";
 import { requireSuccessfulExecution } from "./transactionReceipt";
+import { isChallengeV2WriteEnabled, requireChallengeV2WriteEnabled } from "./challengeV2Safety";
 export { serializeReadCacheKey } from "./cache-key";
 import type { CruxCase, ProtocolStats, Submission } from "./types";
 
@@ -14,6 +15,7 @@ export const REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS || "";
 export const VERIFIER_ADDRESS = process.env.NEXT_PUBLIC_VERIFIER_ADDRESS || "";
 export const JUDGE_ADDRESS = process.env.NEXT_PUBLIC_JUDGE_ADDRESS || "";
 export const CHALLENGE_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS || "";
+export const CHALLENGE_V2_WRITES_ENABLED = isChallengeV2WriteEnabled(process.env.NEXT_PUBLIC_CHALLENGE_V2_WRITES_ENABLED);
 
 type WriteRequest = {
   functionName: string;
@@ -172,6 +174,7 @@ export async function submitRegistryWrite(address: string, request: WriteRequest
 }
 
 export async function submitChallengeRegistryWrite(address: string, request: WriteRequest, isWalletCurrent?: () => boolean): Promise<string> {
+  requireChallengeV2WriteEnabled(CHALLENGE_V2_WRITES_ENABLED);
   if (!CHALLENGE_REGISTRY_ADDRESS) throw new Error("Crux Challenge V2 is not deployed or configured yet.");
   return submitContractWrite(address, CHALLENGE_REGISTRY_ADDRESS, request, isWalletCurrent);
 }

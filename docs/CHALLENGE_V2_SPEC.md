@@ -1,6 +1,6 @@
 # Crux Challenge V2 — Approved Economic and Finality Specification
 
-The project owner approved these economic rules on 2026-10-14. Challenge V2 implements them on an isolated development path; V1 remains unchanged and continues to use the deployed Registry, EvidenceVerifier and ClosureJudge. V2 has not been deployed, configured in production, or used to accept live funds.
+The project owner approved these economic rules on 2026-10-14. Challenge V2 was deployed to Studionet chain `61999` and the production frontend was configured to its Registry; V1 remains unchanged and continues to use the deployed Registry, EvidenceVerifier and ClosureJudge. The V2 Registry has accepted no cases or funds. A separate release audit found an evidence-reuse defect in the deployed reopen path; the local fix and its test do not alter the deployed code. See [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md) and do not use the current V2 deployment for funded tests.
 
 ## State machine
 
@@ -44,6 +44,6 @@ The provisional bounty and original evidence bond remain locked through challeng
 
 The rules make an invalid challenge costly without introducing a treasury or administrator, preserve the challenger’s bond when a valid counterfact is not outcome-changing, and prevent either side from withdrawing the same bounty. The bounded recovery window prevents an unavailable validator/source from locking escrow forever.
 
-The project owner approved the rules above on 2026-10-14. Their implementation, isolated tests, deployment plan, and verification are tracked in [`CHALLENGE_V2.md`](CHALLENGE_V2.md). This approval does not authorize a Studionet deployment, funded case, production environment change, or Vercel publication; those remain separate actions requiring explicit approval.
+The project owner approved the rules above on 2026-10-14. Their implementation, tests, deployment evidence, and current security limitation are tracked in [`CHALLENGE_V2.md`](CHALLENGE_V2.md) and [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md). Approval of the economic rules and original setup deployment does not authorize funded cases, a replacement deployment, production environment changes, or Vercel publication; those remain separate actions requiring explicit approval.
 
 No V1 contract, V1 deployment, production environment variable, production traffic, or Vercel production deployment is changed by this specification.

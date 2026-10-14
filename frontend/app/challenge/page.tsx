@@ -106,6 +106,7 @@ export default function ChallengeV2Page() {
   const refresh = useCallback(async () => {
     if (!CHALLENGE_REGISTRY_ADDRESS) { setLoading(false); return; }
     const sequence = ++refreshSequence.current;
+    setCredit("0");
     setLoading(true);
     try {
       const page = await readChallengeRegistry<{ items: ChallengeCase[] }>("list_cases", [0n, 24n]);

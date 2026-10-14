@@ -1,7 +1,7 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isFinalizedSuccessfulReceipt } from "../../scripts/receiptSafety";
+import { getConfiguredRpc, isFinalizedSuccessfulReceipt } from "../../scripts/receiptSafety.js";
 
 describe("V2 deployment receipt safety", () => {
   it("keeps helper modules out of GenLayer CLI's auto-executed deploy folder", () => {
@@ -13,6 +13,26 @@ describe("V2 deployment receipt safety", () => {
     expect(scripts).toEqual(["deployChallengeV2.ts", "deployCrux.ts"]);
   });
 
+  it("keeps the JavaScript receipt helper available outside the CLI auto-entrypoint directory", () => {
+    const helperPath = fileURLToPath(new URL("../../scripts/receiptSafety.js", import.meta.url));
+    const entrypointPath = fileURLToPath(new URL("../../deploy/deployChallengeV2.ts", import.meta.url));
+
+    expect(existsSync(helperPath)).toBe(true);
+    expect(readFileSync(entrypointPath, "utf8")).toContain('../scripts/receiptSafety.js');
+  });
+
+  it("resolves the RPC from GenLayer CLI's effective chain configuration", () => {
+    expect(getConfiguredRpc({
+      chain: { rpcUrls: { default: { http: ["https://studio.genlayer.com/api"] } } },
+    })).toBe("https://studio.genlayer.com/api");
+    expect(getConfiguredRpc({
+      chain: { rpcUrls: { default: { http: ["https://studio.genlayer.com/api/"] } } },
+    })).toBe("https://studio.genlayer.com/api");
+    expect(getConfiguredRpc({
+      transport: { url: "https://wrong.example/api" },
+      chain: { rpcUrls: { default: { http: ["https://studio.genlayer.com/api"] } } },
+    })).toBe("https://wrong.example/api");
+  });
   it("requires finalized status and a successful contract execution", () => {
     expect(isFinalizedSuccessfulReceipt({
       statusName: "FINALIZED",
@@ -36,6 +56,49 @@ describe("V2 deployment receipt safety", () => {
 
   it("rejects a finalized receipt with no execution outcome", () => {
     expect(isFinalizedSuccessfulReceipt({ statusName: "FINALIZED" })).toBe(false);
+  });
+
+  it("accepts a finalized Studionet majority receipt only with successful executions", () => {
+    const receipt = {
+      status: 7,
+      status_name: "FINALIZED",
+      result: 6,
+      result_name: "MAJORITY_AGREE",
+      consensus_data: {
+        votes: { a: "agree", b: "agree", c: "agree", d: "idle", e: "idle" },
+        leader_receipt: [{ execution_result: "SUCCESS" }],
+        validators: [
+          { execution_result: "SUCCESS", vote: "agree" },
+          { execution_result: "SUCCESS", vote: "agree" },
+          { execution_result: "ERROR", vote: "idle", genvm_result: { raw_error: { fatal: false, causes: ["VALIDATOR_QUORUM_REACHED"] } } },
+          { execution_result: "SUCCESS", vote: "agree" },
+          { execution_result: "ERROR", vote: "idle", genvm_result: { raw_error: { fatal: false, causes: ["VALIDATOR_QUORUM_REACHED"] } } },
+        ],
+      },
+    };
+    expect(isFinalizedSuccessfulReceipt(receipt)).toBe(true);
+    expect(isFinalizedSuccessfulReceipt({
+      ...receipt,
+      consensus_data: { ...receipt.consensus_data, leader_receipt: [{ execution_result: "ERROR" }] },
+    })).toBe(false);
+    expect(isFinalizedSuccessfulReceipt({ ...receipt, result_name: "MAJORITY_DISAGREE" })).toBe(false);
+    expect(isFinalizedSuccessfulReceipt({ ...receipt, status_name: "ACCEPTED" })).toBe(false);
+    expect(isFinalizedSuccessfulReceipt({
+      ...receipt,
+      consensus_data: {
+        ...receipt.consensus_data,
+        validators: receipt.consensus_data.validators.map((item, index) => index === 0
+          ? { ...item, execution_result: "ERROR" }
+          : item),
+      },
+    })).toBe(false);
+    expect(isFinalizedSuccessfulReceipt({
+      ...receipt,
+      consensus_data: {
+        ...receipt.consensus_data,
+        votes: { a: "agree", b: "agree", c: "idle", d: "idle", e: "idle" },
+      },
+    })).toBe(false);
   });
 
   it("rejects contradictory status signals and accepts numeric success fields", () => {

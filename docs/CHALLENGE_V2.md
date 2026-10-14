@@ -2,7 +2,9 @@
 
 ## Status and scope
 
-Challenge V2 is a separately implemented and tested protocol branch. The owner approved its economic rules on 2026-10-14. The four V2 contracts and the `/challenge` frontend are not deployed, are not configured in production, and have not accepted live funds. The live product remains V1.
+Challenge V2 is a separately implemented protocol. The owner approved its economic rules on 2026-10-14. Its four contracts are deployed on Studionet chain `61999`, and the production frontend is configured to the V2 Registry. The Registry readback shows zero cases, submissions, challenges, escrow, bonds, credits, and withdrawals. No funded V2 lifecycle has been demonstrated. Read-only deployment evidence is in [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md).
+
+**Release status: NOT READY.** The deployed Registry has an evidence-graph integrity defect on the overturn-to-insufficient/reopen path. The local source fix removes the overturned decisive submission from the active accepted graph and clears the closing pointer; the deployed contract has not been changed. No funded case or challenge should be created on the current deployment. Correcting Studionet requires a separately authorized replacement deployment; this audit did not redeploy.
 
 This work does not modify the deployed Registry, EvidenceVerifier, ClosureJudge, their addresses, V1 data, production environment variables, or Vercel. The existing three-contract V1 trust architecture remains unchanged. V2 is an additive four-contract architecture because counterevidence review is a new adjudication responsibility.
 
@@ -33,7 +35,7 @@ The separate, unexecuted Studionet validation checklist is [`CHALLENGE_V2_LIVE_S
 
 All child contracts are pinned to the Registry constructor address. The Registry deployment uses an empty bootstrap configuration followed by a one-time `configure_components` call from the deployer. There is no V2 admin setter after configuration.
 
-V1 and V2 have distinct registries, child addresses, manifests, and frontend configuration. The V2 route reads only `NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS`; the V1 route continues to read its existing V1 variables. The V2 address is intentionally unset in production.
+V1 and V2 have distinct registries, child addresses, manifests, and frontend configuration. The V2 route reads only `NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS`; the V1 route continues to read its existing V1 variables. Production currently points the V2 route to `0x1BBec07518527A73e35333cD0d266ED20D032c6f`; no Vercel settings or production environment variables were changed during this audit.
 
 ## State and money safety
 
@@ -45,27 +47,28 @@ V1 and V2 have distinct registries, child addresses, manifests, and frontend con
 - Challenge attempts are capped at eight per provisional decision. Reveal and review timeouts have bounded recovery paths.
 - Credit withdrawals require the transaction sender to equal the recipient, clear the credit before the external transfer, and cannot be repeated against the same balance.
 - Commitments bind chain `61999`, the V2 Registry address, case, decision/evidence IDs as applicable, wallet, source, fact, and salt. Salts and unrevealed claims are stored in browser local storage only until reveal; disconnecting or changing wallets does not intentionally erase them.
+- The corrected local Registry removes the challenged provisional submission from `accepted_evidence` when adjudication overturns to `INSUFFICIENT_EVIDENCE`, preserving the submission as history but preventing its reuse by the next closure decision. The deployed Registry lacks this correction; this is a release-blocking mismatch, not a live safeguard.
 
 ## Threat model and remaining assumptions
 
 | Threat | Mitigation | Residual risk / operational note |
 |---|---|---|
 | Prompt injection in case text, source, or claimed fact | Prompts treat all user/source text as data; verifier and adjudicator validate structured fields and replay substantive decision fields. | LLM consensus is still a source-grounded judgment, not a mathematical proof of truth. Carefully bound questions and use primary sources. |
-| Fake, irrelevant, stale, or duplicate evidence | Six-field source check, accepted-evidence context, time-scope test, commitment replay protection, and case+fact reservation. | Validators may disagree about ambiguous source language or policy. The UI must show the basis and status, not imply certainty. |
+| Fake, irrelevant, stale, or duplicate evidence | Six-field source check, accepted-evidence context, time-scope test, commitment replay protection, and case+fact reservation. Local remediation also removes overturned decisive evidence from the active graph on reopen. | **The deployed Registry still retains that overturned evidence in its active graph after an insufficient-evidence overturn. Do not use the current V2 deployment for funded cases.** Validators may also disagree about ambiguous source language or policy. |
 | Unauthorized component callback | One-time fixed child addresses; each callback checks its exact configured sender and the pending stage. | Deployment/bootstrap mistakes remain security-critical; verify every child constructor address and Registry schema before funding. |
 | Callback replay or late result | Child records are keyed by request ID; duplicate writes reject; Registry ignores already-settled callback stages and checks pending IDs/status. | A callback that never arrives uses explicit timeout/recovery; it is not silently treated as a positive verdict. |
-| Early/duplicate payout or wrong recipient | Escrow invariant, delayed finalization, one-time bond release flags, pending penalties, sender-bound credit withdrawal. | Contract deployment itself and live transactions still require fees and user signatures; no deployment/funded end-to-end test has been run. |
+| Early/duplicate payout or wrong recipient | Escrow invariant, delayed finalization, one-time bond release flags, pending penalties, sender-bound credit withdrawal. | No funded end-to-end V2 test has run; separately, the deployed evidence-graph defect prevents calling the release secure. |
 | Challenge griefing | Exact contributor bond, bond forfeiture for invalid/unrevealed challenge, one-hour window, 20-minute reveal bound, eight-attempt cap. | A valid challenge can delay resolution during independent review; timeout recovery bounds the delay. |
-| Web source unavailable or evaluator timeout | Retryable baseline path, challenge review deadline, bounded recovery period, and bond treatment defined in the approved spec. | The V2 hosted integration flow and real validator timings remain unverified until a separately approved deployment. |
+| Web source unavailable or evaluator timeout | Retryable baseline path, challenge review deadline, bounded recovery period, and bond treatment defined in the approved spec. | The V2 funded lifecycle and real validator timings remain unverified. |
 | URL redirects or malicious downstream content | Validators fetch sources, use explicit source policy, and treat fetched bytes as untrusted data. | Current web render interface does not prove the final redirect host. Prefer stable first-party URLs; do not claim redirect-chain verification. |
 | Wallet switching during a pending transaction | Shared EIP-1193 wallet context, accounts/chain event listeners, stale-response generation checks, and a fresh account/chain check before signing. | Wallet providers can change state between the final account read and their own signature UI; users must verify the account/network shown by the wallet. |
 | Lost reveal salt | Browser warns to preserve site data, secrets are kept per commitment, and wallet disconnect does not clear them. | Clearing browser storage or changing browser/device before reveal is unrecoverable by design; do not share the salt before commit finality. |
 
-## Demo guide (after deployment approval)
+## Demo guide (blocked until the Registry fix is deployed and verified)
 
-Use two funded Studionet wallets, one as the evidence contributor and one as the challenger. Do not use the sponsor as either role. Choose a case whose original evidence supports a decisive provisional result and whose challenge source cleanly changes that result under the same subject, version, policy, and time scope.
+Do not perform this demo on the current deployment: the deployed Registry has the reopen evidence-reuse defect documented above. After a corrected Registry is deployed and independently verified under separate authorization, use three distinct Studionet wallets per case: sponsor, original contributor, and challenger. Do not reuse the sponsor or provisional winner as challenger. Select legitimate source sets before requesting approval for funded writes.
 
-1. Confirm the V2 registry address appears in the V2-only manifest and explorer, and start the frontend with only the local `NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS` set.
+1. Confirm the corrected V2 Registry address appears in the V2-only manifest and explorer, and use an isolated preview/local frontend configuration.
 2. Connect wallet A through the injected EIP-1193 provider on Studionet chain `61999`. Create a case with one to three official baseline facts that leave the rule insufficient.
 3. Wait for `OPEN`. From a non-sponsor contributor wallet, enter the first-party source and one exact decisive fact; commit and wait for finality before revealing from the same browser profile.
 4. Show the V2 verifier result and the case entering `PROVISIONAL_CLOSURE`. Point out the one-hour deadline and locked bounty/bond.
@@ -76,7 +79,7 @@ Use two funded Studionet wallets, one as the evidence contributor and one as the
 
 An overturn to `INSUFFICIENT_EVIDENCE` is a successful *challenge* but a reopened case, not a final winning demo. For that path verify `REOPENED`, both bond credits, preserved bounty escrow, and subsequent `OPEN` status after `reopen_case`.
 
-## Verification performed for this source branch
+## Verification performed locally (not proof of deployed remediation)
 
 Run before any deployment:
 
@@ -88,17 +91,17 @@ npm run typecheck
 npm run build
 ```
 
-The pinned `genvm-linter==0.11.0` checks all three V1 contracts and all four V2 contracts with `GENVM_VERSION=v0.2.12`. The no-spend direct suite covers mocked consensus callbacks and economic settlement. The opt-in Studionet integration test is intentionally not run: it deploys contracts and submits transactions, which would cross the deployment/funding approval boundary. Therefore real hosted V2 integration, live adjudicator timing, explorer records, and production Vercel behavior are explicitly not claimed as verified.
+The pinned GenVM semantic linter passed all seven V1/V2 contracts with `GENVM_VERSION=v0.2.12`; the direct suite passed `43` tests, frontend tests passed `27`, frontend typecheck/build and ESLint passed, and the V2 deployment runner typecheck passed. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. The actual four-contract deployment and its five setup transactions are read-only verified; no funded V2 lifecycle, challenge settlement, withdrawal, or V2 hosted execution is claimed.
 
 ## Deployment runbook — do not execute without separate approval
 
-The GenLayer CLI loads every TypeScript/JavaScript file in the root `deploy/` directory in filename order. The V2 deployment script is intentionally gated by `CRUX_DEPLOY_V2_ONLY=1`; the existing V1 deploy script explicitly skips when that flag is set. The V2 script also refuses any client whose chain ID is not `61999`, whose RPC transport is not `https://studio.genlayer.com/api`, or whose V2 manifest already exists. The scripts persist deployment transaction hashes and partial progress so a failed attempt is inspected rather than blindly repeated.
+The GenLayer CLI loads every TypeScript/JavaScript file in the root `deploy/` directory in filename order. The V2 deployment script is intentionally gated by `CRUX_DEPLOY_V2_ONLY=1`; the existing V1 deploy script explicitly skips when that flag is set. The V2 script refuses any client whose chain ID is not `61999` or whose effective RPC is not `https://studio.genlayer.com/api`. It persists transaction hashes and partial progress. Recovery accepts only a deployment's recorded `*_SUBMITTED` or `*_FINALIZED` checkpoint; it verifies each saved receipt, sender, and exact deployed source hash before continuing. Ambiguous `*_DEPLOYING` or configuration-call stages are refused.
 
 ### Expected transactions, costs, and rollback
 
 - Minimum contract setup is **five on-chain writes**: deploy the V2 Registry, Evidence Verifier, Closure Judge, and Challenge Adjudicator (four deployment transactions), then call `configure_components` once. A real demo additionally needs the case-creation deposit and the baseline, evidence commit/reveal, provisional-close, challenge commit/reveal/review, finalization, and credit-withdrawal transactions described above.
 - No fixed GEN total is quoted here: the current supported CLI/SDK path exposes no reliable preflight fee quote for these GenVM executions, and actual consensus/execution charges can vary. The submitter must review the wallet's displayed cost for every write and fund only after separate deployment/demo approval. The number of writes is not a fee estimate.
-- **Isolation/rollback:** V1 addresses, data, environment variables, and production aliases remain untouched. The V2 frontend stays disabled while `NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS` is unset; after any approved deployment, disable V2 by keeping/removing that V2-only variable and leave the V1 variables unchanged. Deployed contracts and finalized transactions are not reversible, so rollback means disabling V2 access and preserving the V2 manifest/receipts for audit—not deleting contracts, migrating V1 funds, or reusing V1 addresses.
+- **Isolation/rollback:** V1 addresses, data, environment variables, and production aliases remain untouched. The current production build has the V2 Registry configured. Do not change its environment or publish a new frontend without separate approval. Because the contract is immutable, a corrected V2 implementation needs an approved replacement deployment and a separately approved frontend configuration/publication. V1 variables and contracts must remain unchanged. Deployed contracts and finalized transactions are not reversible; rollback means disabling V2 access in a separately approved change and preserving all manifests/receipts.
 
 After approval, from the repository root and an unlocked CLI:
 
@@ -110,6 +113,6 @@ genlayer deploy         # V2 script runs; V1 deploy script skips
 Remove-Item Env:CRUX_DEPLOY_V2_ONLY
 ```
 
-If a transaction fails or the command is interrupted, do not rerun deployment. Inspect the saved `deployments/challenge-v2-studionet.json` partial manifest, transaction receipts/traces, and the explorer first; reconcile the exact completed stage before any resumed write. The current deployment script refuses to overwrite an existing manifest. It records each submitted transaction hash and the SHA-256 of the exact contract source bytes, requires each setup write to be both `FINALIZED` and `FINISHED_WITH_RETURN`, then writes `status: DEPLOYED_PENDING_VERIFICATION` rather than claiming full readiness. Independently verify all four addresses, compare source hashes with the deployed transaction input, check Registry constructor bindings, the finalized `configureTxHash`, every child `registry_address`, and V2 Registry `get_stats` including zero initial escrow and balanced accounting. Only after those readbacks succeed should the manifest status be changed to `READY`; if any check is ambiguous, preserve the pending status and stop.
+If a transaction fails or the command is interrupted, do not blindly rerun deployment. Inspect the saved `deployments/challenge-v2-studionet.json` partial manifest, transaction receipts/traces, and the explorer first; reconcile the exact completed stage before any resumed write. The runner resumes only a validated deployment checkpoint and never repeats a recorded transaction. Each setup write requires `FINALIZED` plus either `FINISHED_WITH_RETURN` or a Studio `AGREE`/`MAJORITY_AGREE` result with successful leader execution, a matching validator majority, and only successful validator executions or nonfatal idle `VALIDATOR_QUORUM_REACHED` receipts. The runner then writes `status: DEPLOYED_PENDING_VERIFICATION` rather than claiming full readiness. Independently verify all four addresses, compare source hashes with the deployed transaction input, check Registry constructor bindings, the finalized `configureTxHash`, every child `registry_address`, and V2 Registry `get_stats` including zero initial escrow and balanced accounting. Only after those readbacks succeed should the manifest status be changed to `READY`; if any check is ambiguous, preserve the pending status and stop.
 
-Only after contract verification and a further frontend deployment approval should a production frontend configuration be considered. This implementation does not make or authorize that configuration change.
+The existing V2 deployment is independently verified at the transaction/address/schema/binding level but is not security-certified after the reopen finding. Do not run the deployment script or change production configuration as part of this audit; any replacement contract and frontend publication require separate explicit approval.

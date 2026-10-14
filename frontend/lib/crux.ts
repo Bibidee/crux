@@ -6,6 +6,7 @@ import { TransactionHashVariant, TransactionStatus } from "genlayer-js/types";
 import type { CalldataEncodable, TransactionHash } from "genlayer-js/types";
 import { injectedProvider, normalizeAccounts, RPC_URL, sameWallet, CHAIN_ID } from "./wallet";
 import { serializeReadCacheKey } from "./cache-key";
+import { requireSuccessfulExecution } from "./transactionReceipt";
 export { serializeReadCacheKey } from "./cache-key";
 import type { CruxCase, ProtocolStats, Submission } from "./types";
 
@@ -177,10 +178,12 @@ export async function submitChallengeRegistryWrite(address: string, request: Wri
 
 export async function waitForDecision(hash: string): Promise<unknown> {
   const client = readClient();
-  return client.waitForTransactionReceipt({ hash: hash as TransactionHash, status: TransactionStatus.FINALIZED, retries: 240, interval: 15_000 });
+  const receipt = await client.waitForTransactionReceipt({ hash: hash as TransactionHash, status: TransactionStatus.FINALIZED, retries: 240, interval: 15_000 });
+  return requireSuccessfulExecution(receipt, hash);
 }
 
 export async function waitForFinalization(hash: string): Promise<unknown> {
   const client = readClient();
-  return client.waitForTransactionReceipt({ hash: hash as TransactionHash, status: TransactionStatus.FINALIZED, retries: 240, interval: 15_000 });
+  const receipt = await client.waitForTransactionReceipt({ hash: hash as TransactionHash, status: TransactionStatus.FINALIZED, retries: 240, interval: 15_000 });
+  return requireSuccessfulExecution(receipt, hash);
 }

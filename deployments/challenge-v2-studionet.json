@@ -1,0 +1,65 @@
+{
+  "product": "Crux Challenge V2",
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "status": "DEPLOYED_VERIFIED_SECURITY_REMEDIATION_REQUIRED",
+  "explorer": "https://explorer-studio.genlayer.com",
+  "deployedAt": "2026-10-14T19:34:12.151Z",
+  "deploymentSourceCommit": "a3223a9bf2d02c9555ff0e8a690f148c0164aedf",
+  "independentReadOnlyVerification": {
+    "verifiedAt": "2026-10-14",
+    "chainId": 61999,
+    "rpc": "https://studio.genlayer.com/api",
+    "setupTransactionsFinalizedAndSuccessfullyExecuted": true,
+    "componentBindingsVerified": true,
+    "adminControls": false,
+    "protocolFeeBps": "0",
+    "canonicalStats": {
+      "total_cases": "0",
+      "total_submissions": "0",
+      "total_challenges": "0",
+      "total_deposited_atto": "0",
+      "case_escrow_atto": "0",
+      "bond_escrow_atto": "0",
+      "claimable_atto": "0",
+      "withdrawn_atto": "0",
+      "accounting_balanced": true
+    },
+    "securityFinding": "Overturned provisional evidence remains in accepted_evidence after an insufficient-evidence challenge reopens the case.",
+    "localRemediation": "Not deployed",
+    "fundedLifecycleDemonstrated": false
+  },
+  "contracts": {
+    "registry": {
+      "address": "0x1BBec07518527A73e35333cD0d266ED20D032c6f",
+      "hash": "0x68beed069a8389aaa27299a7dfd8edb8539fc38c1b5936e8fc58f00663fe4805",
+      "txHash": "0x68beed069a8389aaa27299a7dfd8edb8539fc38c1b5936e8fc58f00663fe4805",
+      "sourceFile": "contracts/crux_challenge_registry.py",
+      "sourceSha256": "b9d94e1c03d4cd6c8c7d8aa235bd87b152b39862198914c7234e44806630944c"
+    },
+    "verifier": {
+      "address": "0xb00190356b256f1A013a756c60DF283b08d0774F",
+      "hash": "0xe02310e7501e53b7aaa418f2337d7aa616a8b040a2dffe7d467b42a61e1941d1",
+      "txHash": "0xe02310e7501e53b7aaa418f2337d7aa616a8b040a2dffe7d467b42a61e1941d1",
+      "sourceFile": "contracts/challenge_evidence_verifier.py",
+      "sourceSha256": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83"
+    },
+    "judge": {
+      "address": "0xc883672c59e3866bE204959fC9b78A8F8eC3EcC1",
+      "hash": "0xea0e4e9541c66deee112083eafcfa07d99b7406921c292f8956b21bebfe17712",
+      "txHash": "0xea0e4e9541c66deee112083eafcfa07d99b7406921c292f8956b21bebfe17712",
+      "sourceFile": "contracts/challenge_closure_judge.py",
+      "sourceSha256": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9"
+    },
+    "challengeAdjudicator": {
+      "address": "0xF3d76247987252e4DD77d92C1594d428F1B542EB",
+      "hash": "0x6e196f8f3b426bd2505146ec3efc5e056680f09ca158f9eababd43e2ec5b66e4",
+      "txHash": "0x6e196f8f3b426bd2505146ec3efc5e056680f09ca158f9eababd43e2ec5b66e4",
+      "sourceFile": "contracts/challenge_adjudicator.py",
+      "sourceSha256": "c094eb549d0ec7fb7dc3b831334db11ee7fc26cc1b379d31af8e9439f7f42c90"
+    },
+    "configureHash": "0x1f6d80dd458d9845283acc24a03a88d677d54ed87b0a69cd0234355f251d0612",
+    "configureTxHash": "0x1f6d80dd458d9845283acc24a03a88d677d54ed87b0a69cd0234355f251d0612"
+  }
+}

@@ -210,17 +210,39 @@ def test_insufficient_overturn_reopens_without_releasing_bounty(direct_vm, direc
     warp(direct_vm)
     registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
     case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    assert submission_id in [item["id"] for item in registry.get_case(case_id)["accepted_evidence"]]
     challenge_id = submit_challenge(direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie)
     direct_vm.sender = direct_charlie
     registry.record_challenge_review(challenge_id, review("VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE"))
     case = registry.get_case(case_id)
     assert case["status"] == "REOPENED"
+    assert submission_id not in [item["id"] for item in case["accepted_evidence"]]
     assert case["remaining_bounty_atto"] == str(BOUNTY)
     assert registry.get_credit(addr(direct_bob)) == str(BOND)
     assert registry.get_credit(addr(direct_charlie)) == str(BOND)
     registry.reopen_case(case_id)
-    assert registry.get_case(case_id)["status"] == "OPEN"
-    assert registry.get_case(case_id)["can_submit"] is True
+    case = registry.get_case(case_id)
+    assert case["status"] == "OPEN"
+    assert case["can_submit"] is True
+    assert case["closing_submission"] == ""
+    assert submission_id not in [item["id"] for item in case["accepted_evidence"]]
+
+    next_submission = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/replacement", "A newly sourced fact after the case reopened.",
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(next_submission, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The replacement fact is independently verified.",
+    }))
+    with pytest.raises(Exception, match="decisive evidence id is not in the accepted graph"):
+        registry.record_closure(next_submission, json.dumps({
+            "outcome": "OUTCOME_A", "sufficient": True,
+            "decisive_evidence_ids": [submission_id, next_submission],
+            "basis": "An overturned fact must not be reused after reopening.",
+        }))
     assert registry.get_stats()["accounting_balanced"] is True
 
 

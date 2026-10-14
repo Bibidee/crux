@@ -38,11 +38,11 @@ Crux deliberately separates three responsibilities.
 
 This avoids collapsing two different questions into one LLM call: **is the fact established?** and **does the fact resolve the case?**
 
-## Challenge V2 (isolated, not deployed)
+## Challenge V2 (deployed; remediation required)
 
 Challenge V2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the component boundaries, threat model, demo instructions, and deployment checklist are in [`docs/CHALLENGE_V2.md`](docs/CHALLENGE_V2.md).
 
-The V2 contracts and `/challenge` frontend route are isolated from the deployed V1 Registry. No V2 address is configured in the production frontend, no V2 contracts have been deployed, and V2 has not accepted live funds. Deployment, production configuration, and publication each require separate explicit approval. V1 keeps its existing three-contract trust architecture and live addresses.
+The four V2 contracts are deployed on Studionet and the production frontend is configured to the V2 Registry; setup receipts and read-only verification are recorded in [`deployments/challenge-v2-studionet.json`](deployments/challenge-v2-studionet.json) and [`docs/CHALLENGE_V2_RELEASE_EVIDENCE.md`](docs/CHALLENGE_V2_RELEASE_EVIDENCE.md). The Registry has no cases or funds. A security audit found that an overturned provisional submission remains in the active evidence graph when an insufficient-evidence challenge reopens a case. A local fix and regression test are present, but the deployed contract does not include that fix. Do not create funded V2 cases or represent V2 as submission-ready until a corrected deployment is separately authorized and verified. The existing V1 three-contract trust architecture, addresses, and live flow remain unchanged.
 
 ## Main flow
 
@@ -102,7 +102,9 @@ tests/
   integration/            # opt-in Studionet deployment smoke test
 deploy/
   deployCrux.ts            # deploys verifier → judge → registry
-  deployChallengeV2.ts     # separate, chain-61999-guarded V2 deployment; not run
+  deployChallengeV2.ts     # separate, chain-61999-guarded V2 deployment runner
+deployments/
+  challenge-v2-studionet.json  # four V2 addresses and five setup receipts
 docs/
   ARCHITECTURE.md
   CHALLENGE_V2.md
@@ -141,6 +143,10 @@ pip install -r requirements.txt
 genvm-lint check contracts/crux_registry.py --json
 genvm-lint check contracts/evidence_verifier.py --json
 genvm-lint check contracts/closure_judge.py --json
+genvm-lint check contracts/crux_challenge_registry.py --json
+genvm-lint check contracts/challenge_evidence_verifier.py --json
+genvm-lint check contracts/challenge_closure_judge.py --json
+genvm-lint check contracts/challenge_adjudicator.py --json
 
 pytest tests/direct/ -v
 ```
@@ -223,7 +229,7 @@ The browser generates a 32-byte salt and stores the pending reveal in local stor
 
 GenVM web rendering can follow redirects while the currently exposed API does not provide a redirect-chain proof to the contract. Crux therefore treats the submitted URL and source policy as part of validator judgment and records the requested URL, not a cryptographically proven final redirect target. For high-value deployments, prefer stable first-party URLs and source policies that identify acceptable hosts explicitly. Do not claim redirect-chain verification unless the GenVM API adds it and the contract is updated to use it.
 
-## Release status
+## V1 release status
 
 The current remediated Studionet deployment and complete two-wallet evidence flow passed on chain `61999`; the live frontend is [https://crux-end.vercel.app](https://crux-end.vercel.app). Current addresses, transaction evidence and the historical previous-registry flow are recorded in [`deployments/studionet.json`](deployments/studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md).
 

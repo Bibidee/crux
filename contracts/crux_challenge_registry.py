@@ -832,6 +832,13 @@ class CruxChallengeRegistry(gl.Contract):
             original["settled_at"] = _iso()
             case["challenge_status"] = "VERDICT_OVERTURNED"
             if new_outcome == "INSUFFICIENT_EVIDENCE":
+                # Keep the submission and challenge records as immutable history,
+                # but do not let evidence that lost its decisive standing remain
+                # in the active accepted graph used by later verification/judging.
+                case["accepted_evidence"] = [
+                    item for item in case["accepted_evidence"]
+                    if item.get("id") != original["id"]
+                ]
                 self._release_challenge_bond(challenge)
                 self._release_bond(original, original["contributor"])
                 case["status"] = "REOPENED"
@@ -845,6 +852,7 @@ class CruxChallengeRegistry(gl.Contract):
                 case["challenge_status"] = "REOPENED"
                 case["pending_final_outcome"] = ""
                 case["pending_final_beneficiary"] = ""
+                case["closing_submission"] = ""
                 self._save_submission(original)
                 self._save_challenge(challenge)
                 self._save_case(case)

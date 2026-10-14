@@ -1,21 +1,21 @@
 # Crux Challenge V2 — Studionet Live Smoke-Test Plan
 
-**Status: prepared, not executed.** This plan requires a separately approved V2 deployment and separate authorization for funded test cases and their transactions. It must not be run against V1 or production configuration.
+**Status: blocked, not executed.** The four V2 contracts exist on Studionet and production is configured to the V2 Registry, but the deployed Registry has a known evidence-reuse defect when an insufficient-evidence challenge reopens a case. The local source/test fix has not been deployed. Do not fund or run either case until a corrected Registry is separately authorized, deployed, and independently verified. This plan does not authorize deployment, production changes, or funded writes.
 
 ## Fixed scope
 
 - Network: GenLayer Studionet, chain ID `61999` only.
 - RPC: `https://studio.genlayer.com/api` only.
-- Use only the four addresses in the V2-only deployment manifest after independent source-hash, binding, schema, and Registry readback verification.
+- The current addresses and five setup receipts are in the V2-only manifest; they are not approved for funded test use while the deployed Registry is vulnerable. A future corrected deployment must have its own manifest and verified bindings.
 - Use three distinct wallets per case: sponsor, original contributor, and challenger. The sponsor and provisional winner cannot challenge.
 - Use an isolated local/preview frontend setting for `NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS`; do not set or replace the V1 production Registry variable.
 - No deployment retry, case creation, bond, bounty, withdrawal, or other write is authorized by this plan itself.
 
 ## Before funded writes
 
-1. Confirm the manifest is `READY` only after verifying all four finalized deployment receipts, successful execution results, source SHA-256 hashes, constructor Registry bindings, one-time component configuration, and the V2 Registry schema.
+1. Do not accept the old manifest's `READY` label as a security approval. First verify that the corrected deployed Registry source contains the reopen graph-removal fix, then verify all four finalized receipts, execution results, source SHA-256 hashes, constructor Registry bindings, one-time component configuration, and schemas.
 2. Read Registry `get_stats`; record `accounting_balanced=true`, `admin_controls=false`, zero cases, zero case escrow, zero bond escrow, and zero claimable credits.
-3. Record chain ID/RPC, contract addresses, source hashes, wallet addresses, and each wallet’s displayed per-transaction cost. Do not use an assumed total fee; stop if any wallet prompt or network differs from this plan.
+3. Record chain ID/RPC, contract addresses, source hashes, three distinct wallet addresses (sponsor, contributor, challenger), and each wallet’s displayed per-transaction cost. Wallet identities and case-specific fee prompts are not available in this audit. Do not use an assumed total fee; stop if any wallet prompt or network differs from the separately approved plan.
 4. Prepare two cases with valid official baseline facts that identify the subject but leave the precommitted binary rule insufficient. Use the approved bounty range and the exact displayed contributor/challenger bond for each case.
 
 ## Shared case path

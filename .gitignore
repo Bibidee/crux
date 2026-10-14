@@ -10,3 +10,5 @@ artifacts/
 .pytest_cache/
 .env
 .DS_Store
+
+.vercel

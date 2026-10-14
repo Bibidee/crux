@@ -1,5 +1,11 @@
 # Security and failure model
 
+## Challenge V2 release blocker (2026-10-14)
+
+The deployed Challenge V2 Registry at [`0x1BBec07518527A73e35333cD0d266ED20D032c6f`](https://explorer-studio.genlayer.com/address/0x1BBec07518527A73e35333cD0d266ED20D032c6f) retains an overturned provisional submission in `accepted_evidence` after a challenge changes the verdict to `INSUFFICIENT_EVIDENCE` and reopens the case. A later closure decision can therefore receive evidence whose decisive standing was overturned. The deployed source hash and setup transactions are recorded in [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md).
+
+The local remediation removes that submission from the active accepted graph and clears `closing_submission`, while retaining the original submission and challenge records as history. A direct regression test verifies the old evidence cannot be cited by the next closure callback. This fix is **not** in the deployed immutable Registry. The current deployment has zero cases and zero accounted funds, but it must not be used for funded V2 cases until a corrected Registry is separately authorized, deployed, and independently verified. V1 is unaffected.
+
 ## Prompt injection
 
 Every nondeterministic prompt explicitly treats case text, page text, URLs, labels and evidence as untrusted data. Embedded system messages, role changes, instructions and claimed verdicts are ignored. Validators rerun the underlying task rather than only judging whether the leader returned valid JSON.

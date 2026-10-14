@@ -143,6 +143,7 @@ def _patch_pinned_genvm_nondeterminism(vm):
     # gltest adapter patches the newer genlayer.vm namespace instead.
     import genlayer.gl.vm as genlayer_vm
     import genlayer.gl.nondet as genlayer_nondet
+    import genlayer.gl.nondet.web as genlayer_web
     from gltest.direct import wasi_mock
     from genlayer.py.types import Lazy
 
@@ -186,6 +187,16 @@ def _patch_pinned_genvm_nondeterminism(vm):
             return json.loads(response)
         return response
 
+    def render_web(url, mode="text"):
+        # gltest 0.29.2's WebRender response shape is not decoded by the pinned
+        # v0.2.12 Python SDK. Preserve mock text so tests can exercise the exact
+        # source content embedded in the contract's evaluator prompt.
+        active_vm = wasi_mock.get_vm()
+        response = wasi_mock._handle_web_render(active_vm, {"url": url, "mode": mode})
+        if mode == "screenshot":
+            return response.get("ok", {}).get("image", b"")
+        return response.get("ok", {}).get("text", "")
+
     if not getattr(genlayer_vm, "_crux_direct_mode", False):
         run_nondet_unsafe.lazy = lambda leader, validator, /, **kwargs: Lazy(
             lambda: run_nondet_unsafe(leader, validator, **kwargs))
@@ -199,6 +210,10 @@ def _patch_pinned_genvm_nondeterminism(vm):
         genlayer_vm.run_nondet_default = run_nondet_default
         genlayer_nondet.exec_prompt = exec_prompt
         genlayer_vm._crux_direct_mode = True
+
+    if not getattr(genlayer_web, "_crux_direct_mode", False):
+        genlayer_web.render = render_web
+        genlayer_web._crux_direct_mode = True
 
     def run_validator(*, leader_result=_VALIDATOR_SENTINEL, leader_error=None, index=-1):
         vm = wasi_mock.get_vm()

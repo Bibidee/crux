@@ -5,7 +5,7 @@
 ## Audited release baseline
 
 - Repository branch: `challenge-v2`.
-- Latest locally available remote-tracking commit at audit start: [`a3223a9`](https://github.com/Bibidee/crux/commit/a3223a9bf2d02c9555ff0e8a690f148c0164aedf). A new `git fetch` attempt was blocked by the environment's DNS/thread-start error; the local remote-tracking ref matched this SHA.
+- Audited implementation commit pushed to `challenge-v2`: [`6f7517d`](https://github.com/Bibidee/crux/commit/6f7517d3ae2179684475b3185b1cad319dfcd9a5), parent `a3223a9bf2d02c9555ff0e8a690f148c0164aedf`, tree `ab7453c9ab55eaf2424b148d8c065bde1f5e20d5`. The normal Git push could not resolve GitHub in this environment; the authenticated GitHub API advanced the ref non-forcibly after every uploaded blob hash and the complete tree were verified against the locally tested commit.
 - Production frontend source: `a3223a9bf2d02c9555ff0e8a690f148c0164aedf`.
 - Network: GenLayer Studionet, chain `61999`, RPC `https://studio.genlayer.com/api`.
 - Registry under audit: [`0x1BBec07518527A73e35333cD0d266ED20D032c6f`](https://explorer-studio.genlayer.com/address/0x1BBec07518527A73e35333cD0d266ED20D032c6f).
@@ -58,7 +58,7 @@ On the final local source after the audit edits:
 - ESLint: passed.
 - V2 deployment runner TypeScript check: passed.
 
-The exact baseline `a3223a9` has [GitHub Actions quality run #31](https://github.com/Bibidee/crux/actions/runs/38619674150), conclusion `success`. Its GitHub status checks also report `Vercel – frontend` success and `Vercel – frontend-nx88` failure. The duplicate failure is the separate non-live Python project described above; it does not change the production `frontend` deployment status. This post-audit source still needs to be pushed and its resulting Actions jobs checked before CI can be called green for the final commit. No production publication was made.
+The baseline `a3223a9` has [GitHub Actions quality run #31](https://github.com/Bibidee/crux/actions/runs/38619674150), conclusion `success`; its statuses also show `Vercel – frontend` success and the separate `Vercel – frontend-nx88` failure described above. The audited implementation tree was pushed as `6f7517d` and its exact [GitHub Actions quality run #32](https://github.com/Bibidee/crux/actions/runs/38647723062) concluded `success`: both `frontend` and `contracts` jobs passed, including frontend tests/typecheck/build, the V1 and isolated V2 semantic-linter steps, and direct GenVM tests. This evidence-file refresh does not modify implementation code. The production alias remains on commit `a3223a9`; Vercel returned no deployment for `6f7517d`, and no production publication was made.
 
 ## Live challenge evidence
 

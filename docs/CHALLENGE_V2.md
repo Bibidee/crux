@@ -93,6 +93,12 @@ The pinned `genvm-linter==0.11.0` checks all three V1 contracts and all four V2 
 
 The GenLayer CLI loads every TypeScript/JavaScript file in the root `deploy/` directory in filename order. The V2 deployment script is intentionally gated by `CRUX_DEPLOY_V2_ONLY=1`; the existing V1 deploy script explicitly skips when that flag is set. The V2 script also refuses any client whose chain ID is not `61999`, whose RPC transport is not `https://studio.genlayer.com/api`, or whose V2 manifest already exists. The scripts persist deployment transaction hashes and partial progress so a failed attempt is inspected rather than blindly repeated.
 
+### Expected transactions, costs, and rollback
+
+- Minimum contract setup is **five on-chain writes**: deploy the V2 Registry, Evidence Verifier, Closure Judge, and Challenge Adjudicator (four deployment transactions), then call `configure_components` once. A real demo additionally needs the case-creation deposit and the baseline, evidence commit/reveal, provisional-close, challenge commit/reveal/review, finalization, and credit-withdrawal transactions described above.
+- No fixed GEN total is quoted here: the current supported CLI/SDK path exposes no reliable preflight fee quote for these GenVM executions, and actual consensus/execution charges can vary. The submitter must review the wallet's displayed cost for every write and fund only after separate deployment/demo approval. The number of writes is not a fee estimate.
+- **Isolation/rollback:** V1 addresses, data, environment variables, and production aliases remain untouched. The V2 frontend stays disabled while `NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS` is unset; after any approved deployment, disable V2 by keeping/removing that V2-only variable and leave the V1 variables unchanged. Deployed contracts and finalized transactions are not reversible, so rollback means disabling V2 access and preserving the V2 manifest/receipts for audit—not deleting contracts, migrating V1 funds, or reusing V1 addresses.
+
 After approval, from the repository root and an unlocked CLI:
 
 ```powershell

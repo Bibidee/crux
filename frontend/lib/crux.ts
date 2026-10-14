@@ -2,17 +2,21 @@
 
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
-import { TransactionHashVariant } from "genlayer-js/types";
-import { injectedProvider, RPC_URL } from "./wallet";
+import { TransactionHashVariant, TransactionStatus } from "genlayer-js/types";
+import type { CalldataEncodable, TransactionHash } from "genlayer-js/types";
+import { injectedProvider, normalizeAccounts, RPC_URL, sameWallet, CHAIN_ID } from "./wallet";
+import { serializeReadCacheKey } from "./cache-key";
+export { serializeReadCacheKey } from "./cache-key";
 import type { CruxCase, ProtocolStats, Submission } from "./types";
 
 export const REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS || "";
 export const VERIFIER_ADDRESS = process.env.NEXT_PUBLIC_VERIFIER_ADDRESS || "";
 export const JUDGE_ADDRESS = process.env.NEXT_PUBLIC_JUDGE_ADDRESS || "";
+export const CHALLENGE_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_CHALLENGE_REGISTRY_ADDRESS || "";
 
 type WriteRequest = {
   functionName: string;
-  args?: unknown[];
+  args?: CalldataEncodable[];
   value?: bigint;
 };
 
@@ -34,8 +38,8 @@ async function reserveRpc(): Promise<void> {
   }
 }
 
-function isRateLimited(error: any): boolean {
-  const text = String(error?.message || error || "").toLowerCase();
+function isRateLimited(error: unknown): boolean {
+  const text = (error instanceof Error ? error.message : String(error)).toLowerCase();
   return text.includes("rate limit") || text.includes("too many requests") || text.includes("429") || text.includes("fetch failed");
 }
 
@@ -52,14 +56,14 @@ async function withRpcBudget<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-function assertRegistry(): `0x${string}` {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(REGISTRY_ADDRESS)) {
-    throw new Error("Crux Registry is not configured. Set NEXT_PUBLIC_REGISTRY_ADDRESS.");
+function assertRegistryAddress(address: string): `0x${string}` {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error("Crux Registry address is not configured or invalid.");
   }
-  return REGISTRY_ADDRESS as `0x${string}`;
+  return address as `0x${string}`;
 }
 
-function normalize(value: any): any {
+function normalize(value: unknown): unknown {
   if (value instanceof Map) return Object.fromEntries(Array.from(value.entries()).map(([k, v]) => [String(k), normalize(v)]));
   if (Array.isArray(value)) return value.map(normalize);
   if (value && typeof value === "object") {
@@ -72,7 +76,7 @@ function normalize(value: any): any {
 }
 
 export function readClient() {
-  return createClient({ chain: studionet, endpoint: RPC_URL } as any);
+  return createClient({ chain: studionet, endpoint: RPC_URL });
 }
 
 export async function writeClient(address: string) {
@@ -82,49 +86,35 @@ export async function writeClient(address: string) {
     chain: studionet,
     endpoint: RPC_URL,
     account: address as `0x${string}`,
-    provider,
-  } as any);
+    provider: provider as NonNullable<NonNullable<Parameters<typeof createClient>[0]>["provider"]>,
+  });
   return client;
 }
 
-function cacheKeyValue(value: unknown, seen = new WeakSet<object>()): unknown {
-  if (value === null) return ["null"];
-  if (typeof value === "bigint") return ["bigint", value.toString()];
-  if (typeof value === "string") return ["string", value];
-  if (typeof value === "number") return ["number", Number.isNaN(value) ? "NaN" : Object.is(value, -0) ? "-0" : String(value)];
-  if (typeof value === "boolean") return ["boolean", value];
-  if (typeof value === "undefined") return ["undefined"];
-  if (typeof value === "function") return ["function", String(value)];
-  if (typeof value !== "object") return [typeof value, String(value)];
-  if (seen.has(value)) throw new TypeError("Cannot serialize cyclic RPC cache arguments");
-  seen.add(value);
-  let result: unknown;
-  if (Array.isArray(value)) result = ["array", value.map((item) => cacheKeyValue(item, seen))];
-  else if (value instanceof Map) result = ["map", Array.from(value.entries()).map(([key, item]) => [cacheKeyValue(key, seen), cacheKeyValue(item, seen)])];
-  else result = ["object", Object.keys(value).sort().map((key) => [key, cacheKeyValue((value as Record<string, unknown>)[key], seen)])];
-  seen.delete(value);
-  return result;
-}
-
-export function serializeReadCacheKey(functionName: string, args: unknown[] = [], latest = false): string {
-  return JSON.stringify([cacheKeyValue(functionName), cacheKeyValue(args), cacheKeyValue(latest)]);
-}
-
-async function read<T>(functionName: string, args: unknown[] = [], latest = false): Promise<T> {
-  const key = serializeReadCacheKey(functionName, args, latest);
+async function readAt<T>(registryAddress: string, functionName: string, args: CalldataEncodable[] = [], latest = false): Promise<T> {
+  const key = JSON.stringify([registryAddress.toLowerCase(), serializeReadCacheKey(functionName, args, latest)]);
   const cached = readCache.get(key);
   if (cached && cached.expires > Date.now()) return cached.value as T;
   const pending = readInflight.get(key);
   if (pending) return pending as Promise<T>;
   const request = withRpcBudget(() => readClient().readContract({
-    address: assertRegistry(), functionName, args,
+    address: assertRegistryAddress(registryAddress), functionName, args,
     transactionHashVariant: latest ? TransactionHashVariant.LATEST_NONFINAL : TransactionHashVariant.LATEST_FINAL,
-  } as any)).then(normalize).then((value) => {
+  })).then(normalize).then((value) => {
     readCache.set(key, { value, expires: Date.now() + (latest ? 2_000 : 8_000) });
     return value as T;
   }).finally(() => readInflight.delete(key));
   readInflight.set(key, request);
   return request;
+}
+
+async function read<T>(functionName: string, args: CalldataEncodable[] = [], latest = false): Promise<T> {
+  return readAt(REGISTRY_ADDRESS, functionName, args, latest);
+}
+
+export async function readChallengeRegistry<T>(functionName: string, args: CalldataEncodable[] = [], latest = false): Promise<T> {
+  if (!CHALLENGE_REGISTRY_ADDRESS) throw new Error("Crux Challenge V2 is not deployed or configured yet.");
+  return readAt(CHALLENGE_REGISTRY_ADDRESS, functionName, args, latest);
 }
 
 export async function listCases(offset = 0, count = 24): Promise<{ items: CruxCase[]; total: string }> {
@@ -142,26 +132,55 @@ export async function findLatestCaseBySponsor(address: string, latest = false): 
   return read("find_latest_case_by_sponsor", [address], latest);
 }
 
-export async function submitRegistryWrite(address: string, request: WriteRequest): Promise<string> {
+export async function submitContractWrite(address: string, registryAddress: string, request: WriteRequest, isWalletCurrent?: () => boolean): Promise<string> {
   const client = await writeClient(address);
   const call = {
-    address: assertRegistry(),
+    address: assertRegistryAddress(registryAddress),
     functionName: request.functionName,
     args: request.args || [],
-    ...(request.value !== undefined ? { value: request.value } : {}),
-  } as any;
+  };
   // genlayer-js 1.1.x estimates gas internally; there is no fee-profile API in
   // the stable Studionet client. Always pass the required calldata value.
-  const hash = await withRpcBudget(() => client.writeContract({ ...call, value: request.value ?? 0n }));
+  const hash = await withRpcBudget(async () => {
+    const activeProvider = injectedProvider();
+    if (!activeProvider) throw new Error("No injected EIP-1193 wallet found");
+    const [currentAccounts, rawChain] = await Promise.all([
+      activeProvider.request({ method: "eth_accounts" }),
+      activeProvider.request({ method: "eth_chainId" }),
+    ]);
+    if (!normalizeAccounts(currentAccounts).some((current) => sameWallet(current, address))) {
+      throw new Error("The connected wallet changed before signing; review the account and retry.");
+    }
+    if (typeof rawChain !== "string" || Number.parseInt(rawChain, 16) !== CHAIN_ID) {
+      throw new Error("Switch the connected wallet back to GenLayer Studionet (61999) before signing.");
+    }
+    if (isWalletCurrent && !isWalletCurrent()) {
+      throw new Error("Wallet connection changed before signing; review the active account and retry.");
+    }
+    return client.writeContract({
+      ...call,
+      args: request.args || [],
+      value: request.value ?? 0n,
+    });
+  });
   return String(hash);
+}
+
+export async function submitRegistryWrite(address: string, request: WriteRequest, isWalletCurrent?: () => boolean): Promise<string> {
+  return submitContractWrite(address, REGISTRY_ADDRESS, request, isWalletCurrent);
+}
+
+export async function submitChallengeRegistryWrite(address: string, request: WriteRequest, isWalletCurrent?: () => boolean): Promise<string> {
+  if (!CHALLENGE_REGISTRY_ADDRESS) throw new Error("Crux Challenge V2 is not deployed or configured yet.");
+  return submitContractWrite(address, CHALLENGE_REGISTRY_ADDRESS, request, isWalletCurrent);
 }
 
 export async function waitForDecision(hash: string): Promise<unknown> {
   const client = readClient();
-  return client.waitForTransactionReceipt({ hash: hash as any, status: "FINALIZED" as any, retries: 240, interval: 15_000 });
+  return client.waitForTransactionReceipt({ hash: hash as TransactionHash, status: TransactionStatus.FINALIZED, retries: 240, interval: 15_000 });
 }
 
 export async function waitForFinalization(hash: string): Promise<unknown> {
   const client = readClient();
-  return client.waitForTransactionReceipt({ hash: hash as any, status: "FINALIZED" as any, retries: 240, interval: 15_000 });
+  return client.waitForTransactionReceipt({ hash: hash as TransactionHash, status: TransactionStatus.FINALIZED, retries: 240, interval: 15_000 });
 }

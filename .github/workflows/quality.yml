@@ -18,6 +18,12 @@ jobs:
       - run: genvm-lint check contracts/crux_registry.py --json
       - run: genvm-lint check contracts/evidence_verifier.py --json
       - run: genvm-lint check contracts/closure_judge.py --json
+      - name: Lint isolated Challenge V2 contracts
+        run: |
+          genvm-lint check contracts/crux_challenge_registry.py --json
+          genvm-lint check contracts/challenge_evidence_verifier.py --json
+          genvm-lint check contracts/challenge_closure_judge.py --json
+          genvm-lint check contracts/challenge_adjudicator.py --json
       - run: pytest tests/direct/ -v
 
   frontend:

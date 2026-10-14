@@ -38,6 +38,12 @@ Crux deliberately separates three responsibilities.
 
 This avoids collapsing two different questions into one LLM call: **is the fact established?** and **does the fact resolve the case?**
 
+## Challenge V2 (isolated, not deployed)
+
+Challenge V2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the component boundaries, threat model, demo instructions, and deployment checklist are in [`docs/CHALLENGE_V2.md`](docs/CHALLENGE_V2.md).
+
+The V2 contracts and `/challenge` frontend route are isolated from the deployed V1 Registry. No V2 address is configured in the production frontend, no V2 contracts have been deployed, and V2 has not accepted live funds. Deployment, production configuration, and publication each require separate explicit approval. V1 keeps its existing three-contract trust architecture and live addresses.
+
 ## Main flow
 
 ```text
@@ -83,6 +89,10 @@ contracts/
   crux_registry.py
   evidence_verifier.py
   closure_judge.py
+  crux_challenge_registry.py          # isolated Challenge V2
+  challenge_evidence_verifier.py      # isolated Challenge V2
+  challenge_closure_judge.py          # isolated Challenge V2
+  challenge_adjudicator.py            # isolated Challenge V2
 frontend/
   app/                    # Next.js multi-page app
   components/
@@ -92,8 +102,11 @@ tests/
   integration/            # opt-in Studionet deployment smoke test
 deploy/
   deployCrux.ts            # deploys verifier → judge → registry
+  deployChallengeV2.ts     # separate, chain-61999-guarded V2 deployment; not run
 docs/
   ARCHITECTURE.md
+  CHALLENGE_V2.md
+  CHALLENGE_V2_SPEC.md
   SECURITY.md
   LIVE_DEMO.md
   REVIEW_EVIDENCE.md

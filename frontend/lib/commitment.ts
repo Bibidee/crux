@@ -35,16 +35,16 @@ export async function makeCommitment(input: {
 
 export function loadPendingReveals(): PendingReveal[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(KEY) || "[]") as PendingReveal[]; }
+  try { return JSON.parse(window.localStorage.getItem(KEY) || "[]") as PendingReveal[]; }
   catch { return []; }
 }
 
 export function savePendingReveal(item: PendingReveal): void {
   const list = loadPendingReveals().filter((x) => x.commitment !== item.commitment);
   list.unshift(item);
-  localStorage.setItem(KEY, JSON.stringify(list.slice(0, 50)));
+  window.localStorage.setItem(KEY, JSON.stringify(list.slice(0, 50)));
 }
 
 export function removePendingReveal(commitment: string): void {
-  localStorage.setItem(KEY, JSON.stringify(loadPendingReveals().filter((x) => x.commitment !== commitment)));
+  window.localStorage.setItem(KEY, JSON.stringify(loadPendingReveals().filter((x) => x.commitment !== commitment)));
 }

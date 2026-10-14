@@ -25,6 +25,10 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
 }
 
 export default async function main(client: GenLayerClient<any>) {
+  if (process.env.CRUX_DEPLOY_V2_ONLY === "1") {
+    console.log("Skipping V1 deployment because CRUX_DEPLOY_V2_ONLY=1.");
+    return;
+  }
   const chainId = Number((client as any)?.chain?.id);
   if (chainId !== 61999) throw new Error(`Refusing deployment: Crux is locked to Studionet 61999, client is ${chainId}`);
   console.log("Crux deployment target: Studionet 61999 only");

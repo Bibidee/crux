@@ -79,3 +79,40 @@ export type PendingReveal = {
   revealTxHash?: string;
   revealState?: "SUBMITTED" | "FINALIZED";
 };
+
+export type ChallengeRecord = {
+  id: string;
+  case_id: string;
+  challenged_decision_id: string;
+  challenged_evidence_id: string;
+  challenger: string;
+  commitment: string;
+  bond_atto: string;
+  status: string;
+  committed_at: string;
+  reveal_deadline: string;
+  stage_deadline: string;
+  source_url: string;
+  counterclaim: string;
+  revealed_at: string;
+  review?: Record<string, unknown> | null;
+  bond_released: boolean;
+  bond_forfeited: boolean;
+  settled_at: string;
+};
+
+export type ChallengeCase = CruxCase & {
+  provisional_outcome?: string;
+  provisional_submission?: string;
+  provisional_winner?: string;
+  challenge_deadline?: string;
+  challenge_review_deadline?: string;
+  challenge_recovery_deadline?: string;
+  challenge_status?: string;
+  pending_challenge?: string;
+  challenge_count?: number;
+  pending_invalid_challenge_penalty_atto?: string;
+  pending_final_outcome?: string;
+  pending_final_beneficiary?: string;
+  can_finalize?: boolean;
+};

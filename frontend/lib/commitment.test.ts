@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadPendingReveals, savePendingReveal } from "./commitment";
 
-afterEach(() => { delete (globalThis as any).window; });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("pending reveal persistence", () => {
   it("keeps sealed evidence available across wallet changes", () => {
@@ -10,8 +10,7 @@ describe("pending reveal persistence", () => {
       getItem: (key: string) => data.get(key) ?? null,
       setItem: (key: string, value: string) => data.set(key, value),
     };
-    (globalThis as any).window = { localStorage: storage };
-    (globalThis as any).localStorage = storage;
+    vi.stubGlobal("window", { localStorage: storage } as unknown as Window);
     const pending = { caseId: "cx-test", commitment: "0xcommit", evidenceUrl: "https://example.com", claimedFact: "A sealed fact", salt: "salt", createdAt: new Date().toISOString() };
     savePendingReveal(pending);
     expect(loadPendingReveals()).toEqual([pending]);

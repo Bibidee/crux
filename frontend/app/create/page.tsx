@@ -9,6 +9,7 @@ import { parseGen } from "@/lib/format";
 import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
 import { TransactionNotice } from "@/components/TransactionNotice";
 import { validateCreateForm } from "@/lib/createForm";
+import { errorMessage } from "@/lib/errors";
 
 type Source = { url: string; fact: string };
 
@@ -42,14 +43,15 @@ export default function CreatePage() {
     try {
       const address = wallet.address || await wallet.connect();
       if (!wallet.correctNetwork) await wallet.switchNetwork();
-      if (!wallet.isCurrent(address)) throw new Error("Wallet changed; review the case before submitting again");
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the case before submitting again");
       const closesAt = BigInt(Math.floor(Date.now() / 1000 + duration * 3600));
       setPhase("Requesting wallet signature…");
       const hash = await submitRegistryWrite(address, {
         functionName: "create_case",
         args: [title.trim(), question.trim(), rule.trim(), a.trim(), b.trim(), policy.trim(), JSON.stringify(sources), closesAt],
         value,
-      });
+      }, () => wallet.isCurrent(address, walletRevision));
       setTxHash(hash); setPhase("Transaction submitted — waiting for Studionet finality…");
       toast.message("Case submitted", { description: "The funded baseline must finalize before the market can open.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForFinalization(hash);
@@ -57,11 +59,9 @@ export default function CreatePage() {
       setPhase("Case finalized — baseline verification queued.");
       toast.success("Case finalised", { description: "Baseline verification is now queued." });
       router.push(caseId ? `/cases/${caseId}` : "/cases");
-    } catch (e: any) { setPhase(e?.message || "Case creation failed"); toast.error(e?.message || "Case creation failed"); }
+    } catch (e: unknown) { const message = errorMessage(e, "Case creation failed"); setPhase(message); toast.error(message); }
     finally { setBusy(false); }
   }
-
-  const estimatedBond = (() => { try { const amount = parseGen(bounty); const min = 10n ** 14n; return amount / 100n > min ? amount / 100n : min; } catch { return 0n; } })();
 
   return (
     <div className="page-shell">

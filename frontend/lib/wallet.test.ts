@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { CHAIN_HEX, CHAIN_ID, ensureStudionet, normalizeAccounts, sameWallet } from "./wallet";
+import { CHAIN_HEX, CHAIN_ID, createSingleFlight, ensureStudionet, normalizeAccounts, sameWallet, walletSessionIsCurrent } from "./wallet";
+import type { Eip1193Provider } from "./wallet";
 
-afterEach(() => { delete (globalThis as any).window; });
+function installProvider(provider: Eip1193Provider): void {
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { ethereum: provider } as unknown as Window });
+}
+
+afterEach(() => { Reflect.deleteProperty(globalThis, "window"); });
 
 describe("injected wallet integration", () => {
   it("normalizes accounts without calling wallet-specific snap methods", () => {
@@ -15,29 +20,74 @@ describe("injected wallet integration", () => {
     expect(sameWallet(null, "0xabc")).toBe(false);
   });
 
+  it("shares one pending connect request across repeated clicks", async () => {
+    const flight = createSingleFlight<string>();
+    let finish!: (address: string) => void;
+    const request = () => new Promise<string>((resolve) => { finish = resolve; });
+    const first = flight.run(request);
+    const second = flight.run(request);
+    expect(second).toBe(first);
+    await Promise.resolve();
+    finish("0xalice");
+    await expect(first).resolves.toBe("0xalice");
+    await expect(flight.run(async () => "0xbob")).resolves.toBe("0xbob");
+  });
+
+  it("does not let an invalidated connection clear a newer pending request", async () => {
+    const flight = createSingleFlight<string>();
+    let finishOld!: (address: string) => void;
+    const old = flight.run(() => new Promise<string>((resolve) => { finishOld = resolve; }));
+    flight.clear();
+    const current = flight.run(async () => "0xbob");
+    await expect(current).resolves.toBe("0xbob");
+    await Promise.resolve();
+    finishOld("0xalice");
+    await expect(old).resolves.toBe("0xalice");
+    await expect(flight.run(async () => "0xnext")).resolves.toBe("0xnext");
+  });
+
+  it("invalidates stale writes across disconnect, reconnect, account, and network changes", () => {
+    let session: { address: string | null; chainId: number | null; revision: number; disconnected: boolean } = {
+      address: "0xalice", chainId: CHAIN_ID, revision: 1, disconnected: false,
+    };
+    expect(walletSessionIsCurrent(session, "0xalice", 1)).toBe(true);
+    session = { address: null, chainId: null, revision: 2, disconnected: true };
+    expect(walletSessionIsCurrent(session, "0xalice", 1)).toBe(false);
+    session = { address: "0xbob", chainId: CHAIN_ID, revision: 3, disconnected: false };
+    expect(walletSessionIsCurrent(session, "0xalice", 1)).toBe(false);
+    expect(walletSessionIsCurrent(session, "0xbob", 3)).toBe(true);
+    session = { ...session, chainId: 1, revision: 4 };
+    expect(walletSessionIsCurrent(session, "0xbob", 3)).toBe(false);
+    session = { ...session, chainId: CHAIN_ID, revision: 5 };
+    expect(walletSessionIsCurrent(session, "0xbob", 5)).toBe(true);
+  });
+
   it("switches to Studionet through standard EIP-1193 methods", async () => {
     const calls: { method: string; params?: unknown }[] = [];
-    (globalThis as any).window = { ethereum: { request: async (args: any) => {
-      calls.push(args);
-      if (args.method === "eth_chainId") return "0x1";
-      if (args.method === "wallet_switchEthereumChain") return null;
-      throw new Error(`unexpected ${args.method}`);
-    } } };
+    let chainId = "0x1";
+    installProvider({ request: async ({ method, params }) => {
+      calls.push({ method, params });
+      if (method === "eth_chainId") return chainId;
+      if (method === "wallet_switchEthereumChain") { chainId = CHAIN_HEX; return null; }
+      throw new Error(`unexpected ${method}`);
+    } });
     await ensureStudionet();
-    expect(calls.map((x) => x.method)).toEqual(["eth_chainId", "wallet_switchEthereumChain"]);
+    expect(calls.map((x) => x.method)).toEqual(["eth_chainId", "wallet_switchEthereumChain", "eth_chainId"]);
     expect(calls[1].params).toEqual([{ chainId: CHAIN_HEX }]);
     expect(CHAIN_ID).toBe(61999);
   });
 
   it("adds the network only when the wallet reports an unknown chain", async () => {
     const methods: string[] = [];
-    (globalThis as any).window = { ethereum: { request: async (args: any) => {
-      methods.push(args.method);
-      if (args.method === "eth_chainId") return "0x1";
-      if (args.method === "wallet_switchEthereumChain") throw { code: 4902 };
+    let chainId = "0x1";
+    installProvider({ request: async ({ method }) => {
+      methods.push(method);
+      if (method === "eth_chainId") return chainId;
+      if (method === "wallet_switchEthereumChain") throw { code: 4902 };
+      if (method === "wallet_addEthereumChain") { chainId = CHAIN_HEX; return null; }
       return null;
-    } } };
+    } });
     await ensureStudionet();
-    expect(methods).toEqual(["eth_chainId", "wallet_switchEthereumChain", "wallet_addEthereumChain"]);
+    expect(methods).toEqual(["eth_chainId", "wallet_switchEthereumChain", "wallet_addEthereumChain", "eth_chainId"]);
   });
 });

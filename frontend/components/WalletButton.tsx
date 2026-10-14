@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { CircleDot, WalletCards, ChevronDown } from "lucide-react";
 import { useInjectedWallet } from "@/lib/wallet";
 import { shortAddress } from "@/lib/format";
+import { errorMessage } from "@/lib/errors";
 
 export function WalletButton() {
   const wallet = useInjectedWallet();
@@ -17,8 +18,8 @@ export function WalletButton() {
       if (!wallet.connected) await wallet.connect();
       else if (!wallet.correctNetwork) await wallet.switchNetwork();
       toast.success("Studionet wallet ready");
-    } catch (error: any) {
-      toast.error(error?.message || "Wallet request failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Wallet request failed"));
     } finally { setBusy(false); }
   }
 
@@ -29,7 +30,7 @@ export function WalletButton() {
   }
 
   if (!wallet.ready) return <button className="wallet-button muted" disabled>Checking wallet…</button>;
-  if (!wallet.connected) return <button className="wallet-button" onClick={connectOrSwitch} disabled={busy}><WalletCards size={15}/><span>{busy ? "Opening…" : "Connect wallet"}</span></button>;
+  if (!wallet.connected) return <button className="wallet-button" onClick={connectOrSwitch} disabled={busy || wallet.connecting}><WalletCards size={15}/><span>{busy || wallet.connecting ? "Opening…" : "Connect wallet"}</span></button>;
 
   return (
     <div style={{ position: "relative" }}>

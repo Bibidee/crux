@@ -39,7 +39,11 @@ The frontend now reads V2 while pausing all V2 writes by default. Setting `NEXT_
 
 ## Verification record
 
-This section is updated with the exact final commit, local checks, and exact-commit GitHub Actions results after execution. Do not treat a previous V2 CI run as validation of this candidate. The Studionet integration suite is a deployment smoke and is not run without its separately authorized writes.
+The implementation commit [`de8d686`](https://github.com/Bibidee/crux/commit/de8d68671da857e10dc354f367298e0885ab5ea0) was pushed to `challenge-v2`. Local verification passed: frontend tests (34 tests), Next.js typecheck, production build, and TypeScript checks for the V1, V2, and V2.1 deployment entrypoints. The exact-commit [GitHub Actions quality run #34](https://github.com/Bibidee/crux/actions/runs/38656846273) concluded `success`: the frontend job passed tests/typecheck/build; the contracts job passed all V1 and isolated V2 semantic-linter checks plus `pytest tests/direct/`.
+
+GitHub also reported `Vercel – frontend: success` and `Vercel – frontend-nx88: failure` for that commit. These are separate Vercel status checks, not GitHub Actions jobs; no production frontend was published and no Vercel environment was changed. The source-level V2 write pause is therefore not yet live on `crux-end.vercel.app`.
+
+The configured CLI network is Studionet `61999` at `https://studio.genlayer.com/api`; the selected local deployer is `0x527da5f7022f14f7105e5f06cec1a8eff53556b5`. Its live balance could not be verified because the RPC `eth_getBalance` request failed. No V2.1 contract deployment or funded transaction was attempted. The Studionet integration suite is intentionally not run here because it performs deployment writes and requires separate authorization.
 
 Deployment preflight remains an independent gate: verify exact source SHA, selected chain/RPC, unlocked deployment account and live balance, absence of any prior V2.1 manifest/transaction, constructor args, current source hashes, available cost estimate, and setup transaction sequence. If any read-only network or account check is unavailable, stop without deployment and record the gap.
 

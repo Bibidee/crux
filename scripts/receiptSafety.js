@@ -43,10 +43,12 @@ export function isFinalizedSuccessfulReceipt(receipt) {
       ? Object.values(data.votes).map((vote) => String(vote).toLowerCase())
       : [];
     const agreeVotes = votes.filter((vote) => vote === "agree").length;
-    if (leaders.length === 0 || validators.length === 0 || votes.length === 0) return false;
+    const leaderRecords = leaders.filter((leader) => leader?.mode === "leader"
+      || leader?.mode === undefined && leader?.vote === undefined);
+    if (leaderRecords.length === 0 || validators.length === 0 || votes.length === 0) return false;
     if (resultName === "MAJORITY_AGREE" && agreeVotes <= votes.length / 2) return false;
     if (resultName === "AGREE" && agreeVotes !== votes.length) return false;
-    if (!leaders.every((leader) => leader?.execution_result === "SUCCESS")) return false;
+    if (!leaderRecords.every((leader) => leader?.execution_result === "SUCCESS")) return false;
 
     return validators.every((validator) => {
       if (validator?.execution_result === "SUCCESS") return true;

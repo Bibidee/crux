@@ -50,6 +50,20 @@ Negative path 1: `cx-1`, create tx `0x2360d4e1e1cf10f94abe83edd01370de5d8c02b69e
 Negative path 2: `cx-3`, create tx `0x5953a654ee5dbd7994a9e767170acf6dec6809c836ee99a1ae6655be05a5d0b9`; independent baseline consensus again returned `BASELINE_ALREADY_DECIDABLE`, preventing evidence submission and preserving the unresolved-market invariant.
 
 Explorer links use `https://explorer-studio.genlayer.com/tx/<hash>` and the Registry address link above.
+
+## Challenge V2.1 deployment evidence
+
+The security-remediated Challenge V2.1 contract set was deployed separately on Studionet chain `61999` from `challenge-v2` commit `bd6dfd42a3b75cc3b4d21f51018aa99fa4aa6809`. The existing V1 deployment, V2 deployment, frontend environment, and Vercel production alias were not modified.
+
+| Component | Address | Finalized transaction |
+|---|---|---|
+| V2.1 Registry | [`0xA258Ef6f5e2ACB3512c37ACC71544D94Caa7520c`](https://explorer-studio.genlayer.com/address/0xA258Ef6f5e2ACB3512c37ACC71544D94Caa7520c) | [`0x6b9fbc29391cae9520d2041f3181ef8f1fc7491bb930e4dd872a8b1713ea92de`](https://explorer-studio.genlayer.com/tx/0x6b9fbc29391cae9520d2041f3181ef8f1fc7491bb930e4dd872a8b1713ea92de) |
+| V2.1 Evidence Verifier | [`0x6417c5523fE978ff324E65BC226Ce376C5986481`](https://explorer-studio.genlayer.com/address/0x6417c5523fE978ff324E65BC226Ce376C5986481) | [`0xf4eccdf0a4f63aa3f568daa1f495196b6d290adc1e5ce573ffe65580463e9a68`](https://explorer-studio.genlayer.com/tx/0xf4eccdf0a4f63aa3f568daa1f495196b6d290adc1e5ce573ffe65580463e9a68) |
+| V2.1 Closure Judge | [`0xF49904f8BE76A0B7cF51580268f219d7C7480330`](https://explorer-studio.genlayer.com/address/0xF49904f8BE76A0B7cF51580268f219d7C7480330) | [`0xe86fa86e40d69422b9034c61390ff755f2c66432d8b2a5d97bb0547c3141457a`](https://explorer-studio.genlayer.com/tx/0xe86fa86e40d69422b9034c61390ff755f2c66432d8b2a5d97bb0547c3141457a) |
+| V2.1 Challenge Adjudicator | [`0xdDEb644B00f988f684F4F7da9c655e1a458de494`](https://explorer-studio.genlayer.com/address/0xdDEb644B00f988f684F4F7da9c655e1a458de494) | [`0x52b80cc940189dd3b0163e76de00faf2dcf7397cdfffc58f13fcd502afdbd3b7`](https://explorer-studio.genlayer.com/tx/0x52b80cc940189dd3b0163e76de00faf2dcf7397cdfffc58f13fcd502afdbd3b7) |
+| One-time component binding | — | [`0x74c2e532342fb58bd88f900df1b0d6df21667896da5c09dc36d2a875b4637643`](https://explorer-studio.genlayer.com/tx/0x74c2e532342fb58bd88f900df1b0d6df21667896da5c09dc36d2a875b4637643) |
+
+Independent readback matched all four deployed source hashes and schemas. V2.1 Registry `get_stats` returned `chain_id=61999`, the exact three child bindings, `components_configured=true`, `admin_controls=false`, `accounting_balanced=true`, and zero cases, submissions, challenges, escrow, credits, and withdrawals. No funded V2.1 case was created in this deployment task.
 ```
 
 

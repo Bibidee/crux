@@ -27,11 +27,11 @@ describe("V2.1 deployment safety", () => {
     })).toBe("run");
   });
 
-  it("uses an unspent Studionet-only manifest with exact reviewed source hashes", () => {
+  it("accepts the independently verified Studionet manifest with exact reviewed source hashes", () => {
     expect(() => assertChallengeV2_1Manifest(manifest, sourceHashes)).not.toThrow();
-    expect(manifest.status).toBe("NOT_DEPLOYED");
-    expect(manifest.contracts).toEqual({});
-    expect(manifest.transactions).toEqual({});
+    expect(manifest.status).toBe("READY_CONTRACT_LAYER");
+    expect(Object.keys(manifest.contracts).sort()).toEqual(["challengeAdjudicator", "judge", "registry", "verifier"]);
+    expect(manifest.transactions).toHaveProperty("configureComponents");
     expect(manifest.chainId).toBe(61999);
     expect(manifest.rpc).toBe("https://studio.genlayer.com/api");
   });
@@ -48,7 +48,8 @@ describe("V2.1 deployment safety", () => {
       .toThrow(/wrong release or network/);
     expect(() => assertChallengeV2_1Manifest({ ...manifest, status: "READY" }, sourceHashes))
       .toThrow(/unknown manifest stage/);
-    expect(() => assertChallengeV2_1Manifest({ ...manifest, contracts: { registry: {} } }, sourceHashes))
+    const unspent = { ...manifest, status: "NOT_DEPLOYED", contracts: {}, transactions: {} };
+    expect(() => assertChallengeV2_1Manifest({ ...unspent, contracts: { registry: {} } }, sourceHashes))
       .toThrow(/NOT_DEPLOYED manifest already contains transaction history/);
   });
 });

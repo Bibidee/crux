@@ -77,7 +77,10 @@ describe("V2 deployment receipt safety", () => {
       result_name: "MAJORITY_AGREE",
       consensus_data: {
         votes: { a: "agree", b: "agree", c: "agree", d: "idle", e: "idle" },
-        leader_receipt: [{ execution_result: "SUCCESS" }],
+        leader_receipt: [
+          { mode: "leader", execution_result: "SUCCESS" },
+          { mode: "validator", vote: "idle", execution_result: "ERROR", genvm_result: { raw_error: { fatal: false, causes: ["VALIDATOR_QUORUM_REACHED"] } } },
+        ],
         validators: [
           { execution_result: "SUCCESS", vote: "agree" },
           { execution_result: "SUCCESS", vote: "agree" },
@@ -110,6 +113,28 @@ describe("V2 deployment receipt safety", () => {
         votes: { a: "agree", b: "agree", c: "idle", d: "idle", e: "idle" },
       },
     })).toBe(false);
+  });
+
+  it("accepts a finalized write receipt when stable Studionet omits the top-level execution result", () => {
+    const receipt = {
+      status: 7,
+      status_name: "FINALIZED",
+      result: 6,
+      result_name: "MAJORITY_AGREE",
+      consensus_data: {
+        votes: { a: "agree", b: "agree", c: "agree", d: "idle", e: "idle" },
+        leader_receipt: [{ execution_result: "SUCCESS" }],
+        validators: [
+          { execution_result: "SUCCESS", vote: "agree" },
+          { execution_result: "SUCCESS", vote: "agree" },
+          { execution_result: "SUCCESS", vote: "agree" },
+          { execution_result: "ERROR", vote: "idle", genvm_result: { raw_error: { fatal: false, causes: ["VALIDATOR_QUORUM_REACHED"] } } },
+          { execution_result: "ERROR", vote: "idle", genvm_result: { raw_error: { fatal: false, causes: ["VALIDATOR_QUORUM_REACHED"] } } },
+        ],
+      },
+    };
+
+    expect(isFinalizedSuccessfulReceipt(receipt)).toBe(true);
   });
 
   it("rejects contradictory status signals and accepts numeric success fields", () => {

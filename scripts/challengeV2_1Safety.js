@@ -40,7 +40,7 @@ export function assertChallengeV2_1Manifest(manifest, sourceHashes) {
     "JUDGE_DEPLOYING", "JUDGE_SUBMITTED", "JUDGE_FINALIZED",
     "CHALLENGEADJUDICATOR_DEPLOYING", "CHALLENGEADJUDICATOR_SUBMITTED", "CHALLENGEADJUDICATOR_FINALIZED",
     "CONFIGURATION_SUBMITTING", "CONFIGURATION_SUBMITTED", "CONFIGURATION_FINALIZED",
-    "DEPLOYED_PENDING_INDEPENDENT_VERIFICATION",
+    "DEPLOYED_PENDING_INDEPENDENT_VERIFICATION", "READY_CONTRACT_LAYER",
   ]);
   if (!knownStatuses.has(manifest.status)) {
     throw new Error(`Refusing V2.1 deployment from unknown manifest stage ${String(manifest.status)}.`);
@@ -82,6 +82,7 @@ export function assertChallengeV2_1Manifest(manifest, sourceHashes) {
     CONFIGURATION_SUBMITTED: { completed: 4, current: "configureComponents", phase: "submitted" },
     CONFIGURATION_FINALIZED: { completed: 4, configured: true },
     DEPLOYED_PENDING_INDEPENDENT_VERIFICATION: { completed: 4, configured: true },
+    READY_CONTRACT_LAYER: { completed: 4, configured: true },
   };
   const stage = statusStages[manifest.status];
   const expectedContractKeys = CHALLENGE_V2_1_PLAN.slice(0, stage.completed).map(({ key }) => key).sort();

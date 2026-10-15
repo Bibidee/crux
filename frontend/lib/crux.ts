@@ -31,6 +31,7 @@ const RPC_BUDGET = 24;
 const rpcTimes: number[] = [];
 const readCache = new Map<string, { expires: number; value: unknown }>();
 const readInflight = new Map<string, Promise<unknown>>();
+const writeInflight = new Map<string, Promise<string>>();
 
 async function reserveRpc(): Promise<void> {
   while (true) {
@@ -46,7 +47,7 @@ function isRateLimited(error: unknown): boolean {
   return text.includes("rate limit") || text.includes("too many requests") || text.includes("429") || text.includes("fetch failed");
 }
 
-async function withRpcBudget<T>(operation: () => Promise<T>): Promise<T> {
+async function withReadRpcBudget<T>(operation: () => Promise<T>): Promise<T> {
   let delay = 1500;
   for (let attempt = 0; ; attempt += 1) {
     await reserveRpc();
@@ -56,6 +57,32 @@ async function withRpcBudget<T>(operation: () => Promise<T>): Promise<T> {
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay = Math.min(delay * 2, 12_000);
     }
+  }
+}
+
+function isAmbiguousWriteError(error: unknown): boolean {
+  const text = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return text.includes("rate limit") || text.includes("too many requests") || text.includes("429")
+    || text.includes("fetch failed") || text.includes("network") || text.includes("timeout")
+    || text.includes("timed out") || text.includes("connection");
+}
+
+/**
+ * Send a state-changing transaction exactly once. A lost response may mean
+ * the wallet already broadcast it, so this helper deliberately never retries.
+ */
+export async function submitWriteOnce<T>(operation: () => Promise<T>): Promise<T> {
+  await reserveRpc();
+  try {
+    return await operation();
+  } catch (error) {
+    if (isAmbiguousWriteError(error)) {
+      throw new Error(
+        "Transaction submission status is unknown; it may already be broadcast. Check the wallet and authoritative contract state before retrying.",
+        { cause: error },
+      );
+    }
+    throw error;
   }
 }
 
@@ -100,7 +127,7 @@ async function readAt<T>(registryAddress: string, functionName: string, args: Ca
   if (cached && cached.expires > Date.now()) return cached.value as T;
   const pending = readInflight.get(key);
   if (pending) return pending as Promise<T>;
-  const request = withRpcBudget(() => readClient().readContract({
+  const request = withReadRpcBudget(() => readClient().readContract({
     address: assertRegistryAddress(registryAddress), functionName, args,
     transactionHashVariant: latest ? TransactionHashVariant.LATEST_NONFINAL : TransactionHashVariant.LATEST_FINAL,
   })).then(normalize).then((value) => {
@@ -136,6 +163,14 @@ export async function findLatestCaseBySponsor(address: string, latest = false): 
 }
 
 export async function submitContractWrite(address: string, registryAddress: string, request: WriteRequest, isWalletCurrent?: () => boolean): Promise<string> {
+  const key = JSON.stringify([
+    address.toLowerCase(), registryAddress.toLowerCase(), request.functionName,
+    serializeReadCacheKey(request.functionName, request.args || []), String(request.value ?? 0n),
+  ]);
+  const existing = writeInflight.get(key);
+  if (existing) return existing;
+
+  const submission = (async () => {
   const client = await writeClient(address);
   const call = {
     address: assertRegistryAddress(registryAddress),
@@ -144,7 +179,7 @@ export async function submitContractWrite(address: string, registryAddress: stri
   };
   // genlayer-js 1.1.x estimates gas internally; there is no fee-profile API in
   // the stable Studionet client. Always pass the required calldata value.
-  const hash = await withRpcBudget(async () => {
+  const hash = await submitWriteOnce(async () => {
     const activeProvider = injectedProvider();
     if (!activeProvider) throw new Error("No injected EIP-1193 wallet found");
     const [currentAccounts, rawChain] = await Promise.all([
@@ -167,6 +202,13 @@ export async function submitContractWrite(address: string, registryAddress: stri
     });
   });
   return String(hash);
+  })();
+  writeInflight.set(key, submission);
+  try {
+    return await submission;
+  } finally {
+    writeInflight.delete(key);
+  }
 }
 
 export async function submitRegistryWrite(address: string, request: WriteRequest, isWalletCurrent?: () => boolean): Promise<string> {

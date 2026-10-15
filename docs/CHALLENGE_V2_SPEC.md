@@ -35,7 +35,7 @@ The provisional bounty and original evidence bond remain locked through challeng
 ### Bounded parameters implemented in V2
 
 - Bounty: `0.001`–`10` GEN; contributor/challenger bond: `max(0.0001 GEN, 1% of bounty)`.
-- Challenge period: one hour; challenge reveal: at most 20 minutes and never beyond the challenge deadline.
+- Challenge period: one hour for admission; each admitted challenge retains a full 20-minute reveal timeout even when that timeout ends after the admission deadline.
 - Challenge review: 30-minute timeout; recovery after unavailable/timed-out review: 30 minutes.
 - Maximum challenge attempts per provisional decision: eight.
 - Case duration: 30 minutes to 14 days; maximum 40 active evidence submissions and 40 queued adjudications per case.
@@ -47,3 +47,15 @@ The rules make an invalid challenge costly without introducing a treasury or adm
 The project owner approved the rules above on 2026-10-14. Their implementation, tests, deployment evidence, and current security limitation are tracked in [`CHALLENGE_V2.md`](CHALLENGE_V2.md) and [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md). Approval of the economic rules and original setup deployment does not authorize funded cases, a replacement deployment, production environment changes, or Vercel publication; those remain separate actions requiring explicit approval.
 
 No V1 contract, V1 deployment, production environment variable, production traffic, or Vercel production deployment is changed by this specification.
+
+## V2.1 security addendum
+
+The V2.1 source candidate preserves the approved economic rules and adds lifecycle safety constraints:
+
+- Four pending challenge commitments are allowed per provisional round. A fifth commitment is rejected until an abandoned commitment expires or a settled review removes a slot. Challenge attempts remain capped at eight per round; historical records are never erased.
+- Admission is open until the actual one-hour challenge deadline. A commitment accepted before that deadline receives its own full 20-minute reveal timeout. This prevents a late honest challenger from being admitted but unable to reveal.
+- Revealed challenges enter a bounded sequential review queue. A case cannot finalize while any committed, queued, or review-pending challenge remains actionable. Source-unavailable and review-timeout recovery deadlines are monotonic, and finalization waits for them even if a later queued review settles first.
+- The adjudicator receives the exact challenged evidence ID and must return the same ID. An overturn removes only that exact item from the active graph and stores the source, counterclaim, target and basis in `final_decision_evidence`. A verified closing fact that is not itself challenged is shown as `VERIFIED_NON_CLOSING`, not as disproven.
+- The shared frontend write path is one-shot for all V1 and V2 writes. Read-only RPC calls may retry; state-changing calls are never automatically retried after an ambiguous response. Concurrent identical requests are deduplicated, and the UI tells the user to reconcile authoritative state before retrying.
+
+These constraints are source-candidate properties only. V2.1 has no deployed address, transaction hash, or live lifecycle evidence until a separate Studionet deployment is authorized and independently verified.

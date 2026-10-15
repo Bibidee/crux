@@ -13,7 +13,7 @@
 
 ## Before funded writes
 
-1. Do not accept the old manifest's `READY` label as a security approval. First verify that the corrected deployed Registry source contains the reopen graph-removal fix, then verify all four finalized receipts, execution results, source SHA-256 hashes, constructor Registry bindings, one-time component configuration, and schemas.
+1. Do not accept the old manifest's `READY` label as a security approval. First verify that the separately deployed V2.1 Registry source contains the full hardening candidate, then verify all four finalized receipts, execution results, source SHA-256 hashes, constructor Registry bindings, one-time component configuration, and schemas.
 2. Read Registry `get_stats`; record `accounting_balanced=true`, `admin_controls=false`, zero cases, zero case escrow, zero bond escrow, and zero claimable credits.
 3. Record chain ID/RPC, contract addresses, source hashes, three distinct wallet addresses (sponsor, contributor, challenger), and each wallet’s displayed per-transaction cost. Wallet identities and case-specific fee prompts are not available in this audit. Do not use an assumed total fee; stop if any wallet prompt or network differs from the separately approved plan.
 4. Prepare two cases with valid official baseline facts that identify the subject but leave the precommitted binary rule insufficient. Use the approved bounty range and the exact displayed contributor/challenger bond for each case.
@@ -27,7 +27,7 @@ For each case, capture the transaction hash, finalized receipt, explorer URL, an
 3. Original contributor commits a hash binding chain `61999`, V2 Registry, case ID, contributor, source URL, exact fact, and salt. Wait for `FINALIZED` plus `FINISHED_WITH_RETURN` before revealing from the same wallet/browser profile.
 4. Reveal the matching source, fact, and salt. Confirm the V2 verifier result is `VERIFIED`, all six verification flags are true, and the closure judge evaluated both the prior and expanded evidence graphs.
 5. Confirm the result is `PROVISIONAL_CLOSURE`; no bounty or original contributor bond is claimable during the challenge period.
-6. A distinct challenger commits against the exact provisional submission and reveals only after the challenge commitment is finalized. Confirm the Registry enters `CHALLENGE_REVIEW` and the adjudicator reads the original decision rule and decisive evidence packet.
+6. A distinct challenger commits against the exact provisional submission and reveals only after the challenge commitment is finalized. A commitment accepted before the one-hour deadline may reveal during its own 20-minute timeout after that deadline; the Registry must not finalize while it is pending. Confirm the Registry enters `CHALLENGE_REVIEW` and the adjudicator reads the original decision rule, exact challenged evidence ID and decisive evidence packet.
 
 ## Case A — challenge is factual but does not change the result
 

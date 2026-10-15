@@ -29,6 +29,10 @@ CHALLENGE_WINDOW = 3600
 CHALLENGE_REVIEW_TIMEOUT = 1800
 CHALLENGE_RECOVERY = 1800
 MAX_CHALLENGES = 8
+# A challenge commitment is no longer a single exclusive lock. Keep a small
+# bounded set of live commitments so one abandoned challenger cannot deny the
+# rest of the window, while still bounding storage and evaluator work.
+MAX_PENDING_CHALLENGES = 4
 
 BASELINE_OUTCOMES = ("OUTCOME_A", "OUTCOME_B", "INSUFFICIENT_EVIDENCE")
 VERIFICATION_STATUSES = ("VERIFIED", "SOURCE_UNAVAILABLE", "REJECTED")
@@ -396,9 +400,10 @@ class CruxChallengeRegistry(gl.Contract):
             "provisional_outcome": "", "provisional_submission": "", "provisional_winner": "",
             "challenge_deadline": "0", "challenge_review_deadline": "0", "challenge_recovery_deadline": "0",
             "challenge_status": "NONE", "challenge_ids": [], "pending_challenge": "", "challenge_count": 0,
+            "challenge_round": "", "pending_challenge_ids": [], "challenge_review_queue": [],
             "winning_challenge": "",
             "pending_invalid_challenge_penalty_atto": "0", "pending_final_outcome": "",
-            "pending_final_beneficiary": "",
+            "pending_final_beneficiary": "", "final_decision_evidence": None,
         }
         self._save_case(case)
         self.case_ids.append(case_id)
@@ -672,6 +677,17 @@ class CruxChallengeRegistry(gl.Contract):
             "provisional_submission": submission_id, "provisional_winner": submission["contributor"],
             "challenge_deadline": str(_now() + CHALLENGE_WINDOW), "challenge_status": "OPEN",
             "closing_submission": submission_id,
+            # Each provisional decision gets a fresh challenge budget. The
+            # challenge_ids array remains append-only historical evidence.
+            "challenge_round": submission_id, "challenge_count": 0,
+            "pending_challenge": "", "pending_challenge_ids": [],
+            "challenge_review_queue": [], "challenge_review_deadline": "0",
+            "challenge_recovery_deadline": "0", "pending_invalid_challenge_penalty_atto": "0",
+            "pending_final_outcome": "", "pending_final_beneficiary": "",
+            "final_decision_evidence": {
+                "kind": "PROVISIONAL_CLOSURE", "submission_id": submission_id,
+                "decisive_evidence_ids": decisive_ids, "outcome": outcome,
+            },
         })
         self._save_submission(submission)
         self._save_case(case)
@@ -681,15 +697,23 @@ class CruxChallengeRegistry(gl.Contract):
                          challenged_evidence_id: str, commitment: str) -> str:
         self._components_only()
         case = self._case(case_id)
-        if case.get("pending_challenge"):
-            raise gl.vm.UserError("[EXPECTED] another challenge is under review")
-        if case["status"] != "PROVISIONAL_CLOSURE" or case.get("challenge_status") not in (
-            "OPEN", "REJECTED", "VERDICT_UPHELD", "UNREVEALED"):
+        if case["status"] not in ("PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW") or case.get("challenge_status") not in (
+            "OPEN", "REVIEW_PENDING", "REJECTED", "VERDICT_UPHELD", "UNREVEALED", "REVIEW_TIMEOUT_RECOVERY"):
             raise gl.vm.UserError("[EXPECTED] case is not accepting challenges")
-        if _now() + REVEAL_TIMEOUT >= int(case["challenge_deadline"]):
+        if case.get("challenge_round") != case.get("provisional_submission"):
+            raise gl.vm.UserError("[EXPECTED] challenge round is stale")
+        # Admit commitments until the actual advertised deadline. Their
+        # bounded reveal allowance may extend past it, so a late commitment
+        # cannot silently shorten the one-hour opportunity.
+        if _now() >= int(case["challenge_deadline"]):
             raise gl.vm.UserError("[EXPECTED] challenge window has closed")
         if int(case.get("challenge_count", 0)) >= MAX_CHALLENGES:
             raise gl.vm.UserError("[EXPECTED] challenge limit reached")
+        self._settle_expired_challenges(case)
+        pending_ids = case.get("pending_challenge_ids", [])
+        if len(pending_ids) >= MAX_PENDING_CHALLENGES:
+            self._save_case(case)
+            raise gl.vm.UserError("[EXPECTED] challenge queue is full; expire abandoned work first")
         if challenged_decision_id != case["provisional_submission"]:
             raise gl.vm.UserError("[EXPECTED] challenge targets a different provisional decision")
         decisive = self._submission(case["provisional_submission"]).get("closure") or {}
@@ -713,7 +737,10 @@ class CruxChallengeRegistry(gl.Contract):
             "id": challenge_id, "case_id": case_id, "challenged_decision_id": challenged_decision_id,
             "challenged_evidence_id": challenged_evidence_id, "challenger": challenger,
             "commitment": commitment, "bond_atto": str(bond), "status": "COMMITTED",
-            "committed_at": _iso(), "reveal_deadline": str(min(_now() + REVEAL_TIMEOUT, int(case["challenge_deadline"]))),
+            # A commitment made before the challenge window closes retains its
+            # full reveal timeout. The challenge window governs admission, not
+            # whether an already-admitted challenger can reveal.
+            "committed_at": _iso(), "reveal_deadline": str(_now() + REVEAL_TIMEOUT),
             "stage_deadline": "0", "source_url": "", "counterclaim": "", "revealed_at": "",
             "review": None, "bond_released": False, "bond_forfeited": False, "settled_at": "",
         }
@@ -721,11 +748,12 @@ class CruxChallengeRegistry(gl.Contract):
         self.challenge_ids.append(challenge_id)
         case["challenge_ids"].append(challenge_id)
         case["challenge_count"] = int(case.get("challenge_count", 0)) + 1
-        case["pending_challenge"] = challenge_id
+        case.setdefault("pending_challenge_ids", []).append(challenge_id)
         self.challenge_commitment_index[commitment] = challenge_id
         self.total_deposited = u256(int(self.total_deposited) + bond)
         self.bond_escrow = u256(int(self.bond_escrow) + bond)
         self._save_case(case)
+        self._start_next_challenge_review(case)
         return challenge_id
 
     @gl.public.write
@@ -736,8 +764,10 @@ class CruxChallengeRegistry(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] only the committed challenger can reveal")
         if challenge["status"] != "COMMITTED" or _now() >= int(challenge["reveal_deadline"]):
             raise gl.vm.UserError("[EXPECTED] challenge reveal is not available")
-        if case["status"] != "PROVISIONAL_CLOSURE" or case.get("pending_challenge") != challenge_id:
+        if case["status"] not in ("PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW"):
             raise gl.vm.UserError("[EXPECTED] provisional decision is no longer challengeable")
+        if challenge_id not in case.get("pending_challenge_ids", []):
+            raise gl.vm.UserError("[EXPECTED] challenge is no longer pending")
         source_url = _text(source_url, "challenge source URL", MAX_URL, 8)
         counterclaim = _text(counterclaim, "counterclaim", MAX_FACT, 8)
         if not source_url.startswith("https://"):
@@ -752,31 +782,11 @@ class CruxChallengeRegistry(gl.Contract):
         challenge.update({"status": "REVIEW_PENDING", "source_url": source_url,
                           "counterclaim": counterclaim, "revealed_at": _iso(),
                           "stage_deadline": str(_now() + CHALLENGE_REVIEW_TIMEOUT)})
-        case["status"] = "CHALLENGE_REVIEW"
-        case["challenge_status"] = "REVIEW_PENDING"
-        case["challenge_review_deadline"] = challenge["stage_deadline"]
+        challenge["status"] = "REVEALED_QUEUED"
+        case.setdefault("challenge_review_queue", []).append(challenge_id)
         self._save_challenge(challenge)
         self._save_case(case)
-        original = self._submission(case["provisional_submission"])
-        decisive = original.get("closure") or {}
-        decisive_ids = decisive.get("decisive_evidence_ids", [])
-        if not decisive_ids:
-            decisive_ids = [case["provisional_submission"]]
-        decisive_items = []
-        for evidence_id in decisive_ids:
-            if evidence_id == case["provisional_submission"]:
-                decisive_items.append({"id": evidence_id, "url": original["evidence_url"],
-                                       "fact": original["claimed_fact"], "kind": "CONTRIBUTED"})
-            else:
-                for item in case["accepted_evidence"]:
-                    if item["id"] == evidence_id:
-                        decisive_items.append(item)
-        adjudicator = gl.get_contract_at(Address(self.challenge_adjudicator_address))
-        adjudicator.emit(on="finalized").review_challenge(
-            challenge_id, str(gl.message.contract_address), case["question"], case["decision_rule"],
-            case["outcome_a"], case["outcome_b"], case["source_policy"], case["provisional_outcome"],
-            challenge["challenged_evidence_id"], _json(decisive_items), source_url, counterclaim,
-        )
+        self._start_next_challenge_review(case)
 
     def _release_challenge_bond(self, challenge: dict) -> None:
         if challenge.get("bond_released") or challenge.get("bond_forfeited"):
@@ -786,6 +796,110 @@ class CruxChallengeRegistry(gl.Contract):
         self._credit(challenge["challenger"], amount)
         challenge["bond_released"] = True
         challenge["bond_recipient"] = challenge["challenger"]
+
+    def _remove_pending_challenge(self, case: dict, challenge_id: str) -> None:
+        pending = [item for item in case.get("pending_challenge_ids", []) if item != challenge_id]
+        case["pending_challenge_ids"] = pending
+        case["challenge_review_queue"] = [
+            item for item in case.get("challenge_review_queue", []) if item != challenge_id
+        ]
+        if case.get("pending_challenge") == challenge_id:
+            case["pending_challenge"] = ""
+
+    def _schedule_challenge_recovery(self, case: dict) -> None:
+        # Recovery can never shorten the original advertised one-hour window.
+        minimum = max(int(case.get("challenge_deadline", "0")), _now() + CHALLENGE_RECOVERY)
+        current = int(case.get("challenge_recovery_deadline", "0"))
+        case["challenge_recovery_deadline"] = str(max(current, minimum))
+
+    def _settle_expired_challenges(self, case: dict) -> None:
+        """Permissionless cleanup for abandoned or timed-out challenge work."""
+        changed = False
+        for challenge_id in list(case.get("pending_challenge_ids", [])):
+            challenge = self._challenge(challenge_id)
+            if challenge["status"] == "COMMITTED" and _now() >= int(challenge["reveal_deadline"]):
+                challenge["status"] = "UNREVEALED"
+                challenge["bond_forfeited"] = True
+                challenge["settled_at"] = _iso()
+                case["pending_invalid_challenge_penalty_atto"] = str(
+                    int(case.get("pending_invalid_challenge_penalty_atto", "0"))
+                    + int(challenge["bond_atto"])
+                )
+                self._remove_pending_challenge(case, challenge_id)
+                self._save_challenge(challenge)
+                changed = True
+            elif challenge["status"] == "REVIEW_PENDING" and _now() >= int(challenge["stage_deadline"]):
+                challenge["status"] = "REVIEW_TIMEOUT"
+                challenge["settled_at"] = _iso()
+                self._schedule_challenge_recovery(case)
+                self._remove_pending_challenge(case, challenge_id)
+                self._save_challenge(challenge)
+                changed = True
+        if changed:
+            case["status"] = "PROVISIONAL_CLOSURE"
+            case["challenge_status"] = "REVIEW_TIMEOUT_RECOVERY"
+
+    def _settle_blocked_challenges(self, case: dict, except_id: str = "") -> None:
+        # Once one challenge changes the provisional decision, other queued
+        # challenges target stale state. They are settled as protocol-blocked,
+        # refunded, and retained in history; their callbacks cannot mutate the
+        # new result.
+        for challenge_id in list(case.get("pending_challenge_ids", [])):
+            if challenge_id == except_id:
+                continue
+            challenge = self._challenge(challenge_id)
+            if challenge["status"] in ("COMMITTED", "REVEALED_QUEUED", "REVIEW_PENDING"):
+                challenge["status"] = "PROTOCOL_BLOCKED"
+                challenge["settled_at"] = _iso()
+                self._release_challenge_bond(challenge)
+                self._save_challenge(challenge)
+            self._remove_pending_challenge(case, challenge_id)
+        case["challenge_review_queue"] = []
+        case["pending_challenge"] = ""
+
+    def _start_next_challenge_review(self, case: dict) -> None:
+        if case.get("pending_challenge") or case["status"] not in ("PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW"):
+            return
+        queue = case.get("challenge_review_queue", [])
+        while queue:
+            challenge_id = queue.pop(0)
+            challenge = self._challenge(challenge_id)
+            if challenge["status"] != "REVEALED_QUEUED":
+                continue
+            challenge["status"] = "REVIEW_PENDING"
+            challenge["stage_deadline"] = str(_now() + CHALLENGE_REVIEW_TIMEOUT)
+            case["challenge_review_queue"] = queue
+            case["pending_challenge"] = challenge_id
+            case["status"] = "CHALLENGE_REVIEW"
+            case["challenge_status"] = "REVIEW_PENDING"
+            case["challenge_review_deadline"] = challenge["stage_deadline"]
+            self._save_challenge(challenge)
+            self._save_case(case)
+
+            original = self._submission(case["provisional_submission"])
+            decisive = original.get("closure") or {}
+            decisive_ids = decisive.get("decisive_evidence_ids", [])
+            if not decisive_ids:
+                decisive_ids = [case["provisional_submission"]]
+            decisive_items = []
+            for evidence_id in decisive_ids:
+                if evidence_id == case["provisional_submission"]:
+                    decisive_items.append({"id": evidence_id, "url": original["evidence_url"],
+                                           "fact": original["claimed_fact"], "kind": "CONTRIBUTED"})
+                else:
+                    for item in case["accepted_evidence"]:
+                        if item["id"] == evidence_id:
+                            decisive_items.append(item)
+            adjudicator = gl.get_contract_at(Address(self.challenge_adjudicator_address))
+            adjudicator.emit(on="finalized").review_challenge(
+                challenge_id, str(gl.message.contract_address), case["question"], case["decision_rule"],
+                case["outcome_a"], case["outcome_b"], case["source_policy"], case["provisional_outcome"],
+                challenge["challenged_evidence_id"], _json(decisive_items), challenge["source_url"],
+                challenge["counterclaim"],
+            )
+            return
+        case["challenge_review_queue"] = queue
+        self._save_case(case)
 
     @gl.public.write
     def record_challenge_review(self, challenge_id: str, review_json: str) -> None:
@@ -807,11 +921,11 @@ class CruxChallengeRegistry(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] challenge review targets different evidence")
         challenge["review"] = result
         challenge["settled_at"] = _iso()
-        case["pending_challenge"] = ""
+        self._remove_pending_challenge(case, challenge_id)
         if status == "SOURCE_UNAVAILABLE":
             challenge["status"] = "SOURCE_UNAVAILABLE"
-            case.update({"status": "PROVISIONAL_CLOSURE", "challenge_status": "REVIEW_TIMEOUT_RECOVERY",
-                         "challenge_recovery_deadline": str(_now() + CHALLENGE_RECOVERY)})
+            self._schedule_challenge_recovery(case)
+            case.update({"status": "PROVISIONAL_CLOSURE", "challenge_status": "REVIEW_TIMEOUT_RECOVERY"})
         elif status == "CHALLENGE_REJECTED":
             challenge["status"] = "CHALLENGE_REJECTED"
             challenge["bond_forfeited"] = True
@@ -830,9 +944,16 @@ class CruxChallengeRegistry(gl.Contract):
                 raise gl.vm.UserError("[EXPECTED] overturned result must change the proposed outcome")
             challenge["status"] = "VERDICT_OVERTURNED"
             original = self._submission(case["provisional_submission"])
-            original["status"] = "OVERTURNED"
             original["settled_at"] = _iso()
             challenged_evidence_id = challenge["challenged_evidence_id"]
+            case["final_decision_evidence"] = {
+                "kind": "CHALLENGE_REVIEW", "challenge_id": challenge_id,
+                "challenged_decision_id": challenge["challenged_decision_id"],
+                "challenged_evidence_id": challenged_evidence_id,
+                "source_url": challenge["source_url"], "counterclaim": challenge["counterclaim"],
+                "review_status": status, "new_outcome": new_outcome,
+                "basis": result.get("basis", ""),
+            }
             case["accepted_evidence"] = [
                 item for item in case["accepted_evidence"]
                 if item.get("id") != challenged_evidence_id
@@ -842,15 +963,20 @@ class CruxChallengeRegistry(gl.Contract):
                 challenged["status"] = "OVERTURNED"
                 challenged["settled_at"] = _iso()
                 self._save_submission(challenged)
+            if challenged_evidence_id != original["id"]:
+                # The closing submission may remain a true, verified fact even
+                # though the challenged prerequisite no longer supports the
+                # provisional verdict. Its reward entitlement is overturned;
+                # its fact is not falsely labelled disproven.
+                original["status"] = "VERIFIED_NON_CLOSING"
             case["challenge_status"] = "VERDICT_OVERTURNED"
             if new_outcome == "INSUFFICIENT_EVIDENCE":
                 # Keep submission/challenge history, but remove the exact
                 # challenged fact from the active graph. The challenged fact
                 # can be an earlier decisive submission or a baseline item.
-                if challenged_evidence_id != original["id"]:
-                    original["status"] = "VERIFIED_NON_CLOSING"
                 self._release_challenge_bond(challenge)
                 self._release_bond(original, original["contributor"])
+                self._settle_blocked_challenges(case, challenge_id)
                 case["status"] = "REOPENED"
                 case["closes_at"] = str(max(int(case["closes_at"]), _now() + CHALLENGE_RECOVERY))
                 case["provisional_outcome"] = ""
@@ -871,7 +997,9 @@ class CruxChallengeRegistry(gl.Contract):
             case["pending_final_outcome"] = new_outcome
             case["pending_final_beneficiary"] = challenge["challenger"]
             case["winning_challenge"] = challenge_id
+            self._settle_blocked_challenges(case, challenge_id)
             self._save_submission(original)
+        self._start_next_challenge_review(case)
         self._save_challenge(challenge)
         self._save_case(case)
 
@@ -884,7 +1012,7 @@ class CruxChallengeRegistry(gl.Contract):
                 raise gl.vm.UserError("[EXPECTED] challenge reveal deadline has not passed")
             challenge["status"] = "UNREVEALED"
             challenge["settled_at"] = _iso()
-            case["pending_challenge"] = ""
+            self._remove_pending_challenge(case, challenge_id)
             case["challenge_status"] = "UNREVEALED"
             case["pending_invalid_challenge_penalty_atto"] = str(
                 int(case.get("pending_invalid_challenge_penalty_atto", "0")) + int(challenge["bond_atto"]))
@@ -892,17 +1020,19 @@ class CruxChallengeRegistry(gl.Contract):
             case["status"] = "PROVISIONAL_CLOSURE"
             self._save_challenge(challenge)
             self._save_case(case)
+            self._start_next_challenge_review(case)
             return
         if challenge["status"] == "REVIEW_PENDING":
             if _now() < int(challenge["stage_deadline"]):
                 raise gl.vm.UserError("[EXPECTED] challenge review deadline has not passed")
             challenge["status"] = "REVIEW_TIMEOUT"
             challenge["settled_at"] = _iso()
-            case["pending_challenge"] = ""
-            case.update({"status": "PROVISIONAL_CLOSURE", "challenge_status": "REVIEW_TIMEOUT_RECOVERY",
-                         "challenge_recovery_deadline": str(_now() + CHALLENGE_RECOVERY)})
+            self._remove_pending_challenge(case, challenge_id)
+            self._schedule_challenge_recovery(case)
+            case.update({"status": "PROVISIONAL_CLOSURE", "challenge_status": "REVIEW_TIMEOUT_RECOVERY"})
             self._save_challenge(challenge)
             self._save_case(case)
+            self._start_next_challenge_review(case)
             return
         raise gl.vm.UserError("[EXPECTED] challenge is already settled")
 
@@ -926,13 +1056,22 @@ class CruxChallengeRegistry(gl.Contract):
         case = self._case(case_id)
         if case["status"] not in ("PROVISIONAL_CLOSURE", "CHALLENGE_RESOLVED"):
             raise gl.vm.UserError("[EXPECTED] case has no finalizable provisional decision")
+        self._settle_expired_challenges(case)
         if case.get("pending_challenge"):
             raise gl.vm.UserError("[EXPECTED] challenge review is pending")
+        if any(self._challenge(challenge_id)["status"] in (
+            "COMMITTED", "REVEALED_QUEUED", "REVIEW_PENDING"
+        ) for challenge_id in case.get("pending_challenge_ids", [])):
+            raise gl.vm.UserError("[EXPECTED] challenge commitments are unresolved")
+        recovery_deadline = int(case.get("challenge_recovery_deadline", "0"))
+        if recovery_deadline and _now() < recovery_deadline:
+            raise gl.vm.UserError("[EXPECTED] challenge recovery deadline has not passed")
         if case["status"] == "PROVISIONAL_CLOSURE":
-            if case.get("challenge_status") == "REVIEW_TIMEOUT_RECOVERY":
-                if _now() < int(case["challenge_recovery_deadline"]):
-                    raise gl.vm.UserError("[EXPECTED] challenge recovery deadline has not passed")
-            elif _now() < int(case["challenge_deadline"]):
+            # Never let recovery from a missing source shorten the original
+            # challenge window. A completed overturn is already resolved and
+            # has no actionable challenge left to wait for, but any recovery
+            # deadline from another settled review still applies above.
+            if _now() < int(case.get("challenge_deadline", "0")):
                 raise gl.vm.UserError("[EXPECTED] challenge window has not closed")
         outcome = case.get("pending_final_outcome") or case["provisional_outcome"]
         beneficiary = case.get("pending_final_beneficiary") or case["provisional_winner"]
@@ -959,8 +1098,13 @@ class CruxChallengeRegistry(gl.Contract):
         if beneficiary.lower() == original["contributor"].lower():
             original["status"] = "CLOSED_WINNER"
             original["reward_atto"] = str(bounty)
-        else:
+        elif original["status"] == "PROVISIONAL_WINNER":
+            # Only the fact directly overturned by the adjudicator is marked
+            # disproven. A retained verified fact can lose reward entitlement
+            # without becoming false.
             original["status"] = "OVERTURNED"
+        elif original["status"] == "VERIFIED_NON_CLOSING":
+            original["reward_atto"] = "0"
         original["settled_at"] = _iso()
         case.update({"remaining_bounty_atto": "0", "status": "CLOSED", "winner": beneficiary,
                      "final_outcome": outcome, "closed_at": _iso(), "challenge_status": "FINALIZED",
@@ -1044,12 +1188,18 @@ class CruxChallengeRegistry(gl.Contract):
         case = self._case(case_id)
         case["can_submit"] = case["status"] == "OPEN" and _now() < int(case["closes_at"])
         case["can_expire"] = case["status"] in ("OPEN", "BASELINE_PENDING", "BASELINE_RETRYABLE", "REOPENED") and _now() >= int(case["closes_at"]) and int(case["remaining_bounty_atto"]) > 0
+        case["pending_challenge_count"] = sum(
+            1 for challenge_id in case.get("pending_challenge_ids", [])
+            if self._challenge(challenge_id)["status"] in ("COMMITTED", "REVEALED_QUEUED", "REVIEW_PENDING")
+        )
         case["can_finalize"] = (
             case["status"] == "CHALLENGE_RESOLVED"
-            or (case["status"] == "PROVISIONAL_CLOSURE" and not case.get("pending_challenge") and (
-                (_now() >= int(case.get("challenge_recovery_deadline", "0"))
-                 if case.get("challenge_status") == "REVIEW_TIMEOUT_RECOVERY"
-                 else _now() >= int(case.get("challenge_deadline", "0")))))
+            and _now() >= int(case.get("challenge_recovery_deadline", "0"))
+            or (case["status"] == "PROVISIONAL_CLOSURE"
+                and not case.get("pending_challenge")
+                and case["pending_challenge_count"] == 0
+                and _now() >= int(case.get("challenge_deadline", "0"))
+                and _now() >= int(case.get("challenge_recovery_deadline", "0")))
         )
         return case
 

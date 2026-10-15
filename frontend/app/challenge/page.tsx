@@ -256,12 +256,14 @@ export default function ChallengeV2Page() {
 
   const original = submissions.find((item) => item.id === caseData?.provisional_submission);
   const challengePending = challenges.find((item) => item.id === caseData?.pending_challenge);
+  const pendingChallengeCount = caseData?.pending_challenge_count || 0;
+  const challengeSlots = Math.max(0, 4 - pendingChallengeCount);
   const chainReady = CHALLENGE_V2_WRITES_ENABLED && wallet.connected && wallet.correctNetwork;
   const deadline = caseData?.challenge_status === "REVIEW_TIMEOUT_RECOVERY"
     ? caseData.challenge_recovery_deadline : caseData?.challenge_deadline;
-  const canChallenge = caseData?.status === "PROVISIONAL_CLOSURE"
-    && ["OPEN", "REJECTED", "VERDICT_UPHELD", "UNREVEALED"].includes(caseData.challenge_status || "")
-    && !caseData.pending_challenge;
+  const canChallenge = ["PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW"].includes(caseData?.status || "")
+    && ["OPEN", "REVIEW_PENDING", "REJECTED", "VERDICT_UPHELD", "UNREVEALED", "REVIEW_TIMEOUT_RECOVERY"].includes(caseData?.challenge_status || "")
+    && challengeSlots > 0;
 
   return <div className="page-shell challenge-v2-shell">
     <div className="page-heading">
@@ -329,6 +331,7 @@ export default function ChallengeV2Page() {
         <div className="challenge-status-card"><small>On-chain state</small><strong>{caseData.status.replaceAll("_", " ")}</strong>
           {caseData.provisional_outcome ? <><small>Proposed conclusion</small><b>{caseData.provisional_outcome.replaceAll("_", " ")}</b></> : null}
           {deadline && Number(deadline) > 0 ? <><small>Challenge deadline</small><b>{new Date(Number(deadline) * 1000).toLocaleString()}</b></> : null}
+          {caseData.status === "PROVISIONAL_CLOSURE" || caseData.status === "CHALLENGE_REVIEW" ? <><small>Challenge slots</small><b>{challengeSlots} of 4 available</b></> : null}
           <small>Bounty stays locked until finalization</small><b>{formatGen(caseData.remaining_bounty_atto || caseData.bounty_atto)} GEN</b>
         </div>
       </section>
@@ -371,7 +374,7 @@ export default function ChallengeV2Page() {
             <Field label="Challenged evidence ID"><input value={challengedEvidence} onChange={(e) => setChallengedEvidence(e.target.value)} /></Field>
             <Field label="Counterevidence source URL"><input type="url" placeholder="https://" value={challengeUrl} onChange={(e) => setChallengeUrl(e.target.value)} /></Field>
             <Field label="Exact counterclaim"><textarea value={counterclaim} onChange={(e) => setCounterclaim(e.target.value)} /></Field>
-            <button className="primary-button" disabled={!chainReady || !!busy || !caseData.provisional_submission} onClick={() => void commitPacket("challenge")}>Commit challenge · bond {formatGen(caseData.bond_atto)} GEN</button>
+            <button className="primary-button" disabled={!chainReady || !!busy || !caseData.provisional_submission} onClick={() => void commitPacket("challenge")}>Commit challenge · {challengeSlots} slot{challengeSlots === 1 ? "" : "s"} left · bond {formatGen(caseData.bond_atto)} GEN</button>
             <div className="bond-line"><span>Invalid challenge bond</span><b>goes to the final beneficiary</b></div>
           </> : <>
             <div className="eyebrow">Next protocol action</div><h3>{caseData.status.replaceAll("_", " ")}</h3>

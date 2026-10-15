@@ -19,7 +19,7 @@ V1 pays a contributor as soon as a verified fact makes the case decidable. V2 ad
 3. A contributor commits a hash-bound source/fact/salt packet, then reveals after the commit is finalized.
 4. The V2 Evidence Verifier fetches the source and checks six fields: same subject, policy-admissible source, claim support, time scope, material novelty, and non-contradiction.
 5. The V2 Closure Judge applies the original decision rule to the verified evidence graph. A decisive result becomes `PROVISIONAL_CLOSURE`; bounty and winner bond remain locked for the one-hour challenge window.
-6. A different wallet may commit and reveal one challenge against the provisional decision. The Challenge Adjudicator independently fetches and evaluates source admissibility, claim support, same subject/time scope, contradiction, materiality, and whether the original rule changes outcome.
+6. A different wallet may commit and reveal a bounded challenge against the provisional decision. Up to four pending commitments can coexist, abandoned work is permissionlessly cleaned up, and revealed challenges are reviewed sequentially. The Challenge Adjudicator independently fetches and evaluates source admissibility, claim support, same subject/time scope, contradiction, materiality, and whether the original rule changes outcome.
 7. Rejected or immaterial challenges do not change the provisional result. A successful challenge to the opposite decisive outcome becomes `CHALLENGE_RESOLVED`; a challenge that makes the evidence insufficient reopens the case while preserving the bounty.
 8. Permissionless finalization settles bounty and refundable bonds into recipient-bound credits. Users separately withdraw their own credit.
 
@@ -46,7 +46,7 @@ V1 and V2 have distinct registries, child addresses, manifests, and frontend con
 - Refundable challenge bonds remain in escrow through a provisional result or timeout recovery; credits are created at finalization. On an insufficient-evidence overturn, the case reopens and both contributor bonds are credited while the bounty remains escrowed.
 - Invalid and unrevealed challenge bonds are withheld until finalization and credited to the final beneficiary. Failed or late callbacks cannot change a settled challenge.
 - A challenged verdict cannot be finalized while `pending_challenge` is set. Every challenged evidence ID must belong to the evidence set used by the provisional decision. Sponsor and provisional winner cannot challenge.
-- Challenge attempts are capped at eight per provisional decision. Reveal and review timeouts have bounded recovery paths.
+- Challenge attempts are capped at eight per provisional decision. Up to four pending commitments coexist; admission ends at the one-hour deadline, while each admitted commitment retains its full 20-minute reveal timeout. Reveal and review timeouts have bounded recovery paths that cannot shorten the original challenge window.
 - Credit withdrawals require the transaction sender to equal the recipient, clear the credit before the external transfer, and cannot be repeated against the same balance.
 - Commitments bind chain `61999`, the V2 Registry address, case, decision/evidence IDs as applicable, wallet, source, fact, and salt. Salts and unrevealed claims are stored in browser local storage only until reveal; disconnecting or changing wallets does not intentionally erase them.
 - The V2.1 Registry removes the exact challenged item from `accepted_evidence` on either successful overturn, preserves submission/challenge history, and clears stale close pointers when reopening. The adjudicator receives and replays the exact target ID, and the Registry requires its callback to echo that same ID. The deployed V2 Registry lacks these protections; this is a release-blocking mismatch, not a live safeguard.
@@ -60,7 +60,7 @@ V1 and V2 have distinct registries, child addresses, manifests, and frontend con
 | Unauthorized component callback | One-time fixed child addresses; each callback checks its exact configured sender and the pending stage. | Deployment/bootstrap mistakes remain security-critical; verify every child constructor address and Registry schema before funding. |
 | Callback replay or late result | Child records are keyed by request ID; duplicate writes reject; Registry ignores already-settled callback stages and checks pending IDs/status. | A callback that never arrives uses explicit timeout/recovery; it is not silently treated as a positive verdict. |
 | Early/duplicate payout or wrong recipient | Escrow invariant, delayed finalization, one-time bond release flags, pending penalties, sender-bound credit withdrawal. | No funded end-to-end V2 test has run; separately, the deployed evidence-graph defect prevents calling the release secure. |
-| Challenge griefing | Exact contributor bond, bond forfeiture for invalid/unrevealed challenge, one-hour window, 20-minute reveal bound, eight-attempt cap. | A valid challenge can delay resolution during independent review; timeout recovery bounds the delay. |
+| Challenge griefing | Exact contributor bond, bond forfeiture for invalid/unrevealed challenge, four pending slots, permissionless cleanup, one-hour admission window, per-commit 20-minute reveal bound, eight-attempt-per-round cap. | A valid challenge can delay resolution during independent review; timeout recovery bounds the delay. |
 | Web source unavailable or evaluator timeout | Retryable baseline path, challenge review deadline, bounded recovery period, and bond treatment defined in the approved spec. | The V2 funded lifecycle and real validator timings remain unverified. |
 | URL redirects or malicious downstream content | Validators fetch sources, use explicit source policy, and treat fetched bytes as untrusted data. | Current web render interface does not prove the final redirect host. Prefer stable first-party URLs; do not claim redirect-chain verification. |
 | Wallet switching during a pending transaction | Shared EIP-1193 wallet context, accounts/chain event listeners, stale-response generation checks, and a fresh account/chain check before signing. | Wallet providers can change state between the final account read and their own signature UI; users must verify the account/network shown by the wallet. |
@@ -81,6 +81,19 @@ Do not perform this demo on the current deployment: the deployed Registry has th
 
 An overturn to `INSUFFICIENT_EVIDENCE` is a successful *challenge* but a reopened case, not a final winning demo. For that path verify `REOPENED`, both bond credits, preserved bounty escrow, and subsequent `OPEN` status after `reopen_case`.
 
+## V2.1 hardening record
+
+The independent audit reproduced and corrected six classes of risk in the source candidate:
+
+1. **Challenge monopolization:** the exclusive pending slot became four bounded slots with deterministic expiry and a sequential review queue.
+2. **Premature recovery finality:** source-unavailable and review-timeout recovery deadlines are monotonic and finalization always waits for the original challenge deadline plus any outstanding recovery deadline.
+3. **Ambiguous writes:** read RPCs retain bounded retries, while state-changing writes use one-shot submission, in-flight deduplication, fresh wallet/network checks, and an explicit unknown-submission-status error. The V1 helper remains the same public path.
+4. **Round accounting:** each provisional decision resets the attempt counter without erasing historical challenge IDs.
+5. **Evidence consistency:** the exact challenged evidence ID is passed to the adjudicator and echoed by the authenticated callback; successful overturns remove only that exact item from the active graph and preserve final-decision provenance.
+6. **Status consistency:** an earlier verified fact can become `VERIFIED_NON_CLOSING` when a different decisive item is overturned; it is not falsely labelled disproven.
+
+The candidate does not change V1 contracts or the approved economic terms. It remains un-deployed and must not be represented as live remediation.
+
 ## Verification performed locally (not proof of deployed remediation)
 
 Run before any deployment:
@@ -93,7 +106,7 @@ npm run typecheck
 npm run build
 ```
 
-The pinned GenVM semantic linter passed all seven V1/V2 contracts with `GENVM_VERSION=v0.2.12`; the direct suite passed `43` tests, frontend tests passed `27`, frontend typecheck/build and ESLint passed, and the V2 deployment runner typecheck passed. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. The actual four-contract deployment and its five setup transactions are read-only verified; no funded V2 lifecycle, challenge settlement, withdrawal, or V2 hosted execution is claimed.
+The pinned GenVM semantic linter passed all seven V1/V2.1 contracts with `GENVM_VERSION=v0.2.12`; the expanded direct suite passed `53` tests, frontend tests passed `37`, frontend typecheck, ESLint, production build, and deployment-entrypoint TypeScript checks passed. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. No V2.1 deployment, funded case, challenge settlement, withdrawal, or V2.1 hosted execution is claimed.
 
 ## Deployment runbook — do not execute without separate approval
 

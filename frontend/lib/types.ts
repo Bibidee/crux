@@ -21,6 +21,8 @@ export type CruxCase = {
   closing_submission?: string;
   can_submit?: boolean;
   can_expire?: boolean;
+  pending_challenge_count?: number;
+  final_decision_evidence?: Record<string, unknown> | null;
 };
 
 export type EvidenceItem = {
@@ -111,8 +113,10 @@ export type ChallengeCase = CruxCase & {
   challenge_status?: string;
   pending_challenge?: string;
   challenge_count?: number;
+  pending_challenge_count?: number;
   pending_invalid_challenge_penalty_atto?: string;
   pending_final_outcome?: string;
   pending_final_beneficiary?: string;
   can_finalize?: boolean;
+  final_decision_evidence?: Record<string, unknown> | null;
 };

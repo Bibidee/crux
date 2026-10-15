@@ -13,10 +13,10 @@
   "deploymentSourceCommit": null,
   "deployer": null,
   "sourceHashes": {
-    "registry": "8996c44e1e5ce6e9a08891af2157bd267464b0dee13d015a1ec0d934dfa1f2e6",
+    "registry": "66922bf67036610308065088ff64d9df66159568de38e99cd338fa7f16b9393c",
     "verifier": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83",
     "judge": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9",
-    "challengeAdjudicator": "d007976f3fb6fed5e78c11e61664255ad5db95438f525fc8843652e44a5bae10"
+    "challengeAdjudicator": "aa95d910b1101bce65edc9a707bc1cee6c7dfca06be6087bcb431b941933ab07"
   },
   "expectedSetupTransactions": [
     "deploy fresh Crux Challenge Registry",

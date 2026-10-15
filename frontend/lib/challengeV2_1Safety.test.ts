@@ -1,15 +1,14 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { assertChallengeV2_1Manifest, CHALLENGE_V2_1_PLAN, challengeV2_1RunMode } from "../../scripts/challengeV2_1Safety.js";
+import { assertChallengeV2_1Manifest, canonicalSourceSha256, CHALLENGE_V2_1_PLAN, challengeV2_1RunMode } from "../../scripts/challengeV2_1Safety.js";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const manifest = JSON.parse(readFileSync(path.join(root, "deployments/challenge-v2-1-studionet.json"), "utf8"));
 const sourceHashes = Object.fromEntries(CHALLENGE_V2_1_PLAN.map(({ key, file }) => [
   key,
-  createHash("sha256").update(readFileSync(path.join(root, file))).digest("hex"),
+  canonicalSourceSha256(readFileSync(path.join(root, file))),
 ]));
 
 describe("V2.1 deployment safety", () => {
@@ -35,6 +34,11 @@ describe("V2.1 deployment safety", () => {
     expect(manifest.transactions).toEqual({});
     expect(manifest.chainId).toBe(61999);
     expect(manifest.rpc).toBe("https://studio.genlayer.com/api");
+  });
+
+  it("keeps reviewed source hashes stable across checkout line endings", () => {
+    const source = "alpha\r\nbeta\r\n";
+    expect(canonicalSourceSha256(source)).toBe(canonicalSourceSha256(source.replace(/\r\n/g, "\n")));
   });
 
   it("rejects a changed source, wrong network, unknown stage, or a false empty-history claim", () => {

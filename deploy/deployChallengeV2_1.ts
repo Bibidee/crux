@@ -1,19 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DecodedDeployData, GenLayerClient, TransactionHash } from "genlayer-js/types";
 import { TransactionHashVariant, TransactionStatus } from "genlayer-js/types";
 import { getConfiguredRpc, isFinalizedSuccessfulReceipt } from "../scripts/receiptSafety.js";
-import { assertChallengeV2_1Manifest, CHALLENGE_V2_1_PLAN, challengeV2_1RunMode } from "../scripts/challengeV2_1Safety.js";
+import { assertChallengeV2_1Manifest, canonicalSourceSha256, CHALLENGE_V2_1_PLAN, challengeV2_1RunMode } from "../scripts/challengeV2_1Safety.js";
 
 const RPC = "https://studio.genlayer.com/api";
 const MANIFEST_PATH = "deployments/challenge-v2-1-studionet.json";
 const MANIFEST_PRODUCT = "Crux Challenge V2.1";
-
-function sha256(contents: string | Uint8Array): string {
-  return createHash("sha256").update(contents).digest("hex");
-}
 
 function normalize(value: unknown): any {
   if (value instanceof Map) return Object.fromEntries(Array.from(value.entries()).map(([key, item]) => [String(key), normalize(item)]));
@@ -60,7 +55,7 @@ async function verifyDeployReceipt(client: GenLayerClient<any>, txHash: string, 
     throw new Error(`${sourceFile} successful receipt does not contain its expected contract address.`);
   }
   const deployedSource = await (client as any).getContractCode(String(address));
-  if (typeof deployedSource !== "string" || sha256(deployedSource) !== sourceSha256) {
+  if (typeof deployedSource !== "string" || canonicalSourceSha256(deployedSource) !== sourceSha256) {
     throw new Error(`${sourceFile} deployed source does not match its reviewed SHA-256.`);
   }
   return { address: String(address), txHash, sourceFile, sourceSha256 };
@@ -69,7 +64,7 @@ async function verifyDeployReceipt(client: GenLayerClient<any>, txHash: string, 
 async function deployOne(client: GenLayerClient<any>, manifest: Record<string, any>, key: string,
                          file: string, args: unknown[]) {
   const source = readFileSync(path.resolve(process.cwd(), file));
-  const sourceSha256 = sha256(source);
+  const sourceSha256 = canonicalSourceSha256(source);
   const saved = manifest.contracts[key];
   if (saved) {
     if (saved.sourceFile !== file || saved.sourceSha256 !== sourceSha256
@@ -215,7 +210,7 @@ export default async function main(client: GenLayerClient<any>) {
   manifest.contracts ??= {};
   manifest.transactions ??= {};
   const sourceHashes = Object.fromEntries(CHALLENGE_V2_1_PLAN.map(({ key, file }) => [
-    key, sha256(readFileSync(path.resolve(process.cwd(), file))),
+    key, canonicalSourceSha256(readFileSync(path.resolve(process.cwd(), file))),
   ]));
   assertChallengeV2_1Manifest(manifest, sourceHashes);
   if (manifest.deploymentSourceCommit && manifest.deploymentSourceCommit !== requestedCommit) {

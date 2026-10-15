@@ -1,9 +1,20 @@
+import { createHash } from "node:crypto";
+
 export const CHALLENGE_V2_1_PLAN = Object.freeze([
   { key: "registry", file: "contracts/crux_challenge_registry.py" },
   { key: "verifier", file: "contracts/challenge_evidence_verifier.py" },
   { key: "judge", file: "contracts/challenge_closure_judge.py" },
   { key: "challengeAdjudicator", file: "contracts/challenge_adjudicator.py" },
 ]);
+
+export function canonicalSourceSha256(contents) {
+  const source = (typeof contents === "string"
+    ? contents
+    : Buffer.from(contents).toString("utf8"))
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  return createHash("sha256").update(source, "utf8").digest("hex");
+}
 
 export function challengeV2_1RunMode(env) {
   if (env.CRUX_DEPLOY_V2_1_ONLY !== "1") return "skip";

@@ -91,6 +91,7 @@ The independent audit reproduced and corrected six classes of risk in the source
 4. **Round accounting:** each provisional decision resets the attempt counter without erasing historical challenge IDs.
 5. **Evidence consistency:** the exact challenged evidence ID is passed to the adjudicator and echoed by the authenticated callback; successful overturns remove only that exact item from the active graph and preserve final-decision provenance.
 6. **Status consistency:** an earlier verified fact can become `VERIFIED_NON_CLOSING` when a different decisive item is overturned; it is not falsely labelled disproven.
+7. **Concurrent expiry consistency:** manual and automatic expiration reconcile the complete unresolved challenge set. Expiring one commitment cannot clear another active review, queued review, recovery deadline, or finalization guard.
 
 The candidate does not change V1 contracts or the approved economic terms. It remains un-deployed and must not be represented as live remediation.
 
@@ -106,7 +107,7 @@ npm run typecheck
 npm run build
 ```
 
-The pinned GenVM semantic linter passed all seven V1/V2.1 contracts with `GENVM_VERSION=v0.2.12`; the expanded direct suite passed `53` tests, frontend tests passed `37`, frontend typecheck, ESLint, production build, and deployment-entrypoint TypeScript checks passed. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. No V2.1 deployment, funded case, challenge settlement, withdrawal, or V2.1 hosted execution is claimed.
+The pinned GenVM semantic linter passed all seven V1/V2.1 contracts with `GENVM_VERSION=v0.2.12`; the expanded direct suite passed `65` tests, frontend tests passed `38`, frontend typecheck, ESLint, production build, and deployment-entrypoint TypeScript checks passed. The new direct regressions cover concurrent manual/automatic expiration, active and queued review promotion, source-unavailable recovery, same-time expirations, stale callbacks, reopening, and beneficiary/accounting outcomes. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. No V2.1 deployment, funded case, challenge settlement, withdrawal, or V2.1 hosted execution is claimed.
 
 ## Deployment runbook — do not execute without separate approval
 

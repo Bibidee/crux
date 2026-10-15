@@ -94,6 +94,24 @@ def submit_challenge(vm, registry, case_id, decision_id, challenger, callback_wa
     return challenge_id
 
 
+def commit_unrevealed(vm, registry, case_id, decision_id, challenger, commitment="aa" * 32):
+    vm.sender, vm.value = challenger, BOND
+    challenge_id = registry.commit_challenge(case_id, decision_id, decision_id, commitment)
+    vm.value = 0
+    return challenge_id
+
+
+def start_review_with_queue(vm, registry, case_id, submission_id, challenger):
+    active_id = submit_challenge(
+        vm, registry, case_id, submission_id, challenger, challenger, salt="23" * 32,
+    )
+    queued_id = submit_challenge(
+        vm, registry, case_id, submission_id, challenger, challenger,
+        salt="24" * 32, expected_status="REVEALED_QUEUED",
+    )
+    return active_id, queued_id
+
+
 def submit_evidence(vm, registry, case_id, contributor, source_url, fact, salt="33" * 32):
     payload = ["crux-challenge-v2", "61999", addr(vm._contract_address).lower(), case_id,
                addr(contributor).lower(), source_url, fact, salt]
@@ -472,6 +490,279 @@ def test_recovery_deadline_survives_later_queued_review_result(direct_vm, direct
     warp(direct_vm, recovery_deadline + 1)
     registry.finalize_provisional(case_id)
     assert registry.get_case(case_id)["status"] == "CLOSED"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_expiring_unrevealed_challenge_preserves_another_active_review(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+
+    direct_vm.sender, direct_vm.value = direct_charlie, BOND
+    abandoned_id = registry.commit_challenge(case_id, submission_id, submission_id, "aa" * 32)
+    direct_vm.value = 0
+
+    # Admit and reveal B just before A's reveal deadline. B's review is still
+    # live when an unrelated wallet expires A.
+    warp(direct_vm, NOW + 1190)
+    active_id = submit_challenge(
+        direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie,
+        salt="23" * 32,
+    )
+    assert registry.get_challenge(active_id)["status"] == "REVIEW_PENDING"
+    assert registry.get_case(case_id)["pending_challenge"] == active_id
+
+    warp(direct_vm, NOW + 1201)
+    direct_vm.sender = direct_bob
+    registry.expire_challenge(abandoned_id)
+
+    case = registry.get_case(case_id)
+    assert registry.get_challenge(abandoned_id)["status"] == "UNREVEALED"
+    assert registry.get_challenge(active_id)["status"] == "REVIEW_PENDING"
+    assert case["status"] == "CHALLENGE_REVIEW"
+    assert case["challenge_status"] == "REVIEW_PENDING"
+    assert case["pending_challenge"] == active_id
+    assert active_id in case["pending_challenge_ids"]
+
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("VERDICT_UPHELD", contradicts=False, material=False))
+    assert registry.get_challenge(active_id)["status"] == "VERDICT_UPHELD"
+    assert registry.get_case(case_id)["status"] == "PROVISIONAL_CLOSURE"
+
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    final_case = registry.get_case(case_id)
+    assert final_case["status"] == "CLOSED"
+    assert final_case["winner"].lower() == addr(direct_bob).lower()
+    assert final_case["remaining_bounty_atto"] == "0"
+    assert registry.get_credit(addr(direct_charlie)) == str(BOND)
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_expiring_unrevealed_challenge_preserves_a_queued_review(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    abandoned_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie)
+
+    warp(direct_vm, NOW + 700)
+    active_id, queued_id = start_review_with_queue(direct_vm, registry, case_id, submission_id, direct_charlie)
+    warp(direct_vm, NOW + 1201)
+    direct_vm.sender = direct_bob
+    registry.expire_challenge(abandoned_id)
+
+    case = registry.get_case(case_id)
+    assert case["pending_challenge"] == active_id
+    assert queued_id in case["challenge_review_queue"]
+    assert registry.get_challenge(queued_id)["status"] == "REVEALED_QUEUED"
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("VERDICT_UPHELD", contradicts=False, material=False))
+    assert registry.get_challenge(queued_id)["status"] == "REVIEW_PENDING"
+    assert registry.get_case(case_id)["pending_challenge"] == queued_id
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_review_timeout_promotes_queued_review_and_preserves_recovery(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    active_id, queued_id = start_review_with_queue(direct_vm, registry, case_id, submission_id, direct_charlie)
+
+    warp(direct_vm, NOW + 1801)
+    direct_vm.sender = direct_bob
+    registry.expire_challenge(active_id)
+    case = registry.get_case(case_id)
+    assert registry.get_challenge(active_id)["status"] == "REVIEW_TIMEOUT"
+    assert registry.get_challenge(queued_id)["status"] == "REVIEW_PENDING"
+    assert case["pending_challenge"] == queued_id
+    recovery_deadline = int(case["challenge_recovery_deadline"])
+    assert recovery_deadline >= NOW + 3600
+
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(queued_id, review("VERDICT_UPHELD", contradicts=False, material=False))
+    with pytest.raises(Exception, match="challenge recovery deadline has not passed"):
+        registry.finalize_provisional(case_id)
+    warp(direct_vm, recovery_deadline + 1)
+    registry.finalize_provisional(case_id)
+    assert registry.get_case(case_id)["status"] == "CLOSED"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_source_unavailable_callback_preserves_unresolved_commitment(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    abandoned_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie)
+    warp(direct_vm, NOW + 700)
+    active_id = submit_challenge(direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie)
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("SOURCE_UNAVAILABLE"))
+
+    case = registry.get_case(case_id)
+    assert case["status"] == "PROVISIONAL_CLOSURE"
+    assert case["challenge_status"] == "REVIEW_TIMEOUT_RECOVERY"
+    assert case["pending_challenge"] == ""
+    assert case["pending_challenge_ids"] == [abandoned_id]
+    warp(direct_vm, NOW + 1201)
+    direct_vm.sender = direct_bob
+    registry.expire_challenge(abandoned_id)
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    assert registry.get_case(case_id)["status"] == "CLOSED"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_rejected_active_review_promotes_valid_queued_review(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    active_id, queued_id = start_review_with_queue(direct_vm, registry, case_id, submission_id, direct_charlie)
+
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("CHALLENGE_REJECTED"))
+    assert registry.get_challenge(queued_id)["status"] == "REVIEW_PENDING"
+    assert registry.get_case(case_id)["pending_challenge"] == queued_id
+    registry.record_challenge_review(queued_id, review("VERDICT_UPHELD", contradicts=False, material=False))
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    assert registry.get_case(case_id)["status"] == "CLOSED"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_upheld_active_review_promotes_pending_review_and_preserves_original_beneficiary(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    active_id, queued_id = start_review_with_queue(direct_vm, registry, case_id, submission_id, direct_charlie)
+
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("VERDICT_UPHELD", contradicts=False, material=False))
+    assert registry.get_challenge(queued_id)["status"] == "REVIEW_PENDING"
+    assert registry.get_case(case_id)["pending_challenge"] == queued_id
+    assert registry.get_credit(addr(direct_charlie)) == "0"
+
+    registry.record_challenge_review(queued_id, review("VERDICT_UPHELD", contradicts=False, material=False))
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    case = registry.get_case(case_id)
+    assert case["status"] == "CLOSED"
+    assert case["winner"].lower() == addr(direct_bob).lower()
+    assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + BOND)
+    assert registry.get_credit(addr(direct_charlie)) == str(2 * BOND)
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_successful_overturn_blocks_other_queued_reviews_safely(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    active_id, queued_id = start_review_with_queue(direct_vm, registry, case_id, submission_id, direct_charlie)
+
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("VERDICT_OVERTURNED", "OUTCOME_B"))
+    case = registry.get_case(case_id)
+    assert case["status"] == "CHALLENGE_RESOLVED"
+    assert case["pending_challenge"] == ""
+    assert case["pending_challenge_ids"] == []
+    assert registry.get_challenge(queued_id)["status"] == "PROTOCOL_BLOCKED"
+    registry.finalize_provisional(case_id)
+    assert registry.get_case(case_id)["winner"].lower() == addr(direct_charlie).lower()
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_multiple_same_time_expirations_settle_each_bond_once(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    first_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie, "aa" * 32)
+    second_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie, "bb" * 32)
+    warp(direct_vm, NOW + 1201)
+    direct_vm.sender = direct_bob
+    registry.expire_challenge(first_id)
+    registry.expire_challenge(second_id)
+    case = registry.get_case(case_id)
+    assert case["pending_challenge_ids"] == []
+    assert case["pending_invalid_challenge_penalty_atto"] == str(2 * BOND)
+    assert registry.get_challenge(first_id)["status"] == "UNREVEALED"
+    assert registry.get_challenge(second_id)["status"] == "UNREVEALED"
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    assert registry.get_case(case_id)["status"] == "CLOSED"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_automatic_cleanup_inside_new_commitment_preserves_new_work(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    abandoned_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie, "aa" * 32)
+    warp(direct_vm, NOW + 1201)
+    replacement_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie, "bb" * 32)
+    case = registry.get_case(case_id)
+    assert registry.get_challenge(abandoned_id)["status"] == "UNREVEALED"
+    assert registry.get_challenge(replacement_id)["status"] == "COMMITTED"
+    assert case["pending_challenge_ids"] == [replacement_id]
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_automatic_cleanup_during_finalization_preserves_finalization_state(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    abandoned_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie)
+    warp(direct_vm, NOW + 1201)
+    with pytest.raises(Exception, match="challenge window has not closed"):
+        registry.finalize_provisional(case_id)
+    case = registry.get_case(case_id)
+    assert registry.get_challenge(abandoned_id)["status"] == "UNREVEALED"
+    assert case["pending_challenge_ids"] == []
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_insufficient_overturn_blocks_queued_work_before_reopening(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    active_id, queued_id = start_review_with_queue(direct_vm, registry, case_id, submission_id, direct_charlie)
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(active_id, review("VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE"))
+    case = registry.get_case(case_id)
+    assert case["status"] == "REOPENED"
+    assert case["pending_challenge_ids"] == []
+    assert registry.get_challenge(queued_id)["status"] == "PROTOCOL_BLOCKED"
+    registry.reopen_case(case_id)
+    assert registry.get_case(case_id)["status"] == "OPEN"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_old_callback_cannot_change_a_new_provisional_round(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    old_challenge_id = submit_challenge(direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie)
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(old_challenge_id, review("VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE"))
+    registry.reopen_case(case_id)
+    new_id = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/new-round", "A fresh fact for the reopened case.", salt="55" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(new_id, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The new-round fact is supported.",
+    }))
+    registry.record_closure(new_id, json.dumps({
+        "outcome": "OUTCOME_A", "sufficient": True, "decisive_evidence_ids": [new_id],
+        "basis": "The new-round fact closes the case.",
+    }))
+    before = registry.get_case(case_id)
+    registry.record_challenge_review(old_challenge_id, review("VERDICT_OVERTURNED", "OUTCOME_B"))
+    after = registry.get_case(case_id)
+    assert after["status"] == before["status"] == "PROVISIONAL_CLOSURE"
+    assert after["challenge_round"] == new_id
+    assert after["pending_final_outcome"] == ""
     assert registry.get_stats()["accounting_balanced"] is True
 
 

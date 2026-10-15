@@ -13,7 +13,7 @@
   "deploymentSourceCommit": null,
   "deployer": null,
   "sourceHashes": {
-    "registry": "9526ff069fad39605d8aa0eb7eea13b575c8a9fbb95cfb8574307a5f2a9c7f61",
+    "registry": "81076a9826a4573797b1f34722e167913b6defd0d42626cdaf08bb78a8a7202f",
     "verifier": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83",
     "judge": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9",
     "challengeAdjudicator": "d007976f3fb6fed5e78c11e61664255ad5db95438f525fc8843652e44a5bae10"

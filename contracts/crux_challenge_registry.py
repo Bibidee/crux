@@ -806,6 +806,49 @@ class CruxChallengeRegistry(gl.Contract):
         if case.get("pending_challenge") == challenge_id:
             case["pending_challenge"] = ""
 
+    def _reconcile_challenge_state(self, case: dict) -> None:
+        """Rebuild challenge pointers and status from the unresolved records."""
+        unresolved = []
+        queued = []
+        for challenge_id in case.get("pending_challenge_ids", []):
+            challenge = self._challenge(challenge_id)
+            status = challenge["status"]
+            if status in ("COMMITTED", "REVEALED_QUEUED", "REVIEW_PENDING"):
+                unresolved.append(challenge_id)
+                if status == "REVEALED_QUEUED":
+                    queued.append(challenge_id)
+        case["pending_challenge_ids"] = unresolved
+        case["challenge_review_queue"] = [
+            challenge_id for challenge_id in case.get("challenge_review_queue", [])
+            if challenge_id in queued
+        ]
+
+        active_id = case.get("pending_challenge", "")
+        if active_id not in unresolved or self._challenge(active_id)["status"] != "REVIEW_PENDING":
+            case["pending_challenge"] = ""
+            case["challenge_review_deadline"] = "0"
+            active_id = ""
+        if active_id:
+            active = self._challenge(active_id)
+            case["status"] = "CHALLENGE_REVIEW"
+            case["challenge_status"] = "REVIEW_PENDING"
+            case["challenge_review_deadline"] = active["stage_deadline"]
+            return
+
+        if case.get("challenge_review_queue"):
+            if case["status"] == "CHALLENGE_REVIEW":
+                case["status"] = "PROVISIONAL_CLOSURE"
+            self._start_next_challenge_review(case)
+            if case.get("pending_challenge"):
+                return
+
+        if case.get("status") == "CHALLENGE_REVIEW":
+            case["status"] = "PROVISIONAL_CLOSURE"
+        if int(case.get("challenge_recovery_deadline", "0")) > _now():
+            case["challenge_status"] = "REVIEW_TIMEOUT_RECOVERY"
+        elif case.get("challenge_status") == "REVIEW_PENDING":
+            case["challenge_status"] = "OPEN"
+
     def _schedule_challenge_recovery(self, case: dict) -> None:
         # Recovery can never shorten the original advertised one-hour window.
         minimum = max(int(case.get("challenge_deadline", "0")), _now() + CHALLENGE_RECOVERY)
@@ -815,6 +858,8 @@ class CruxChallengeRegistry(gl.Contract):
     def _settle_expired_challenges(self, case: dict) -> None:
         """Permissionless cleanup for abandoned or timed-out challenge work."""
         changed = False
+        review_expired = False
+        unrevealed_expired = False
         for challenge_id in list(case.get("pending_challenge_ids", [])):
             challenge = self._challenge(challenge_id)
             if challenge["status"] == "COMMITTED" and _now() >= int(challenge["reveal_deadline"]):
@@ -828,6 +873,7 @@ class CruxChallengeRegistry(gl.Contract):
                 self._remove_pending_challenge(case, challenge_id)
                 self._save_challenge(challenge)
                 changed = True
+                unrevealed_expired = True
             elif challenge["status"] == "REVIEW_PENDING" and _now() >= int(challenge["stage_deadline"]):
                 challenge["status"] = "REVIEW_TIMEOUT"
                 challenge["settled_at"] = _iso()
@@ -835,9 +881,14 @@ class CruxChallengeRegistry(gl.Contract):
                 self._remove_pending_challenge(case, challenge_id)
                 self._save_challenge(challenge)
                 changed = True
+                review_expired = True
         if changed:
-            case["status"] = "PROVISIONAL_CLOSURE"
-            case["challenge_status"] = "REVIEW_TIMEOUT_RECOVERY"
+            if review_expired:
+                case["challenge_status"] = "REVIEW_TIMEOUT_RECOVERY"
+            elif unrevealed_expired:
+                case["challenge_status"] = "UNREVEALED"
+            self._reconcile_challenge_state(case)
+            self._save_case(case)
 
     def _settle_blocked_challenges(self, case: dict, except_id: str = "") -> None:
         # Once one challenge changes the provisional decision, other queued
@@ -1017,8 +1068,8 @@ class CruxChallengeRegistry(gl.Contract):
             case["pending_invalid_challenge_penalty_atto"] = str(
                 int(case.get("pending_invalid_challenge_penalty_atto", "0")) + int(challenge["bond_atto"]))
             challenge["bond_forfeited"] = True
-            case["status"] = "PROVISIONAL_CLOSURE"
             self._save_challenge(challenge)
+            self._reconcile_challenge_state(case)
             self._save_case(case)
             self._start_next_challenge_review(case)
             return
@@ -1029,8 +1080,9 @@ class CruxChallengeRegistry(gl.Contract):
             challenge["settled_at"] = _iso()
             self._remove_pending_challenge(case, challenge_id)
             self._schedule_challenge_recovery(case)
-            case.update({"status": "PROVISIONAL_CLOSURE", "challenge_status": "REVIEW_TIMEOUT_RECOVERY"})
+            case["challenge_status"] = "REVIEW_TIMEOUT_RECOVERY"
             self._save_challenge(challenge)
+            self._reconcile_challenge_state(case)
             self._save_case(case)
             self._start_next_challenge_review(case)
             return
@@ -1193,8 +1245,10 @@ class CruxChallengeRegistry(gl.Contract):
             if self._challenge(challenge_id)["status"] in ("COMMITTED", "REVEALED_QUEUED", "REVIEW_PENDING")
         )
         case["can_finalize"] = (
-            case["status"] == "CHALLENGE_RESOLVED"
-            and _now() >= int(case.get("challenge_recovery_deadline", "0"))
+            (case["status"] == "CHALLENGE_RESOLVED"
+             and not case.get("pending_challenge")
+             and case["pending_challenge_count"] == 0
+             and _now() >= int(case.get("challenge_recovery_deadline", "0")))
             or (case["status"] == "PROVISIONAL_CLOSURE"
                 and not case.get("pending_challenge")
                 and case["pending_challenge_count"] == 0

@@ -6,6 +6,8 @@ The deployed Challenge V2 Registry at [`0x1BBec07518527A73e35333cD0d266ED20D032c
 
 V2.1 removes the exact challenged evidence ID from the active graph on both insufficient-evidence and opposite-outcome overturns, passes that ID to the child adjudicator, requires an exact callback match, preserves history, and clears stale closure references when reopening. Regression tests cover an earlier decisive submission, the retained valid evidence, stale-ID rejection, both overturn outcomes, and accounting conservation. This correction is **not** in the deployed immutable Registry. The current V2 deployment must not be used for funded cases until all four V2.1 contracts are separately authorized, deployed, and independently verified. V1 is unaffected.
 
+V2.1 also reconciles concurrent challenge cleanup from the complete unresolved set. Manual expiration and permissionless automatic cleanup cannot clear another challenge's active review, queued review, recovery deadline, or finalization guard; an expired commitment is settled independently and the surviving pointers are rebuilt before the next review is promoted.
+
 ## Prompt injection
 
 Every nondeterministic prompt explicitly treats case text, page text, URLs, labels and evidence as untrusted data. Embedded system messages, role changes, instructions and claimed verdicts are ignored. Validators rerun the underlying task rather than only judging whether the leader returned valid JSON.

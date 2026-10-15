@@ -15,7 +15,7 @@ This repository is locked to **GenLayer Studionet**:
 
 Crux V1 remains the existing live three-contract product. The deployed Challenge V2 Registry is superseded by a security defect in challenge evidence invalidation; do not create or fund V2 cases. This source tree now defaults all V2 writes off and preserves read-only access. That safeguard reaches `crux-end.vercel.app` only after a separately approved frontend publication; no Vercel environment or production deployment is changed here. The corrected V2.1 candidate is not deployed. See [`docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md`](docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md).
 
-The V2.1 candidate hardens the full challenge lifecycle with four bounded pending slots, permissionless expiry, admission through the one-hour deadline, a full post-commit reveal timeout, recovery deadlines that cannot shorten finality, per-round challenge accounting, exact target-bound adjudication, and one-shot state-changing wallet writes. It remains source-only until a separate Studionet deployment and frontend publication are authorized and independently verified.
+The V2.1 candidate hardens the full challenge lifecycle with four bounded pending slots, permissionless expiry, admission through the one-hour deadline, a full post-commit reveal timeout, centralized concurrent-review reconciliation, recovery deadlines that cannot shorten finality, per-round challenge accounting, exact target-bound adjudication, and one-shot state-changing wallet writes. It remains source-only until a separate Studionet deployment and frontend publication are authorized and independently verified.
 
 ## Live product
 

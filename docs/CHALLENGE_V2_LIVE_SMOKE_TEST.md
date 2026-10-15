@@ -29,6 +29,8 @@ For each case, capture the transaction hash, finalized receipt, explorer URL, an
 5. Confirm the result is `PROVISIONAL_CLOSURE`; no bounty or original contributor bond is claimable during the challenge period.
 6. A distinct challenger commits against the exact provisional submission and reveals only after the challenge commitment is finalized. A commitment accepted before the one-hour deadline may reveal during its own 20-minute timeout after that deadline; the Registry must not finalize while it is pending. Confirm the Registry enters `CHALLENGE_REVIEW` and the adjudicator reads the original decision rule, exact challenged evidence ID and decisive evidence packet.
 
+7. If another challenge commitment expires while this review is active, call `expire_challenge` from an unrelated wallet and confirm the active `pending_challenge`, review deadline, queue, and `CHALLENGE_REVIEW` status remain intact. If a queued review exists, confirm it is promoted only after the active review settles or times out. Confirm automatic cleanup triggered by a later commitment or finalization does not clear surviving work and that finalization remains blocked while any unresolved challenge remains.
+
 ## Case A — challenge is factual but does not change the result
 
 Use an admissible, supported, same-subject and time-correct counterfact that is immaterial or does not contradict the decisive evidence. Confirm `VERDICT_UPHELD`, unchanged provisional outcome, and no early finalization while the challenge window remains open. After the challenge deadline, any wallet calls `finalize_provisional`. Confirm the original contributor receives the bounty and contributor-bond credit, the upheld challenger receives their bond credit, and each recipient withdraws only their own credit.

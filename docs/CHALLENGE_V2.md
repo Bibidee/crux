@@ -107,7 +107,7 @@ npm run typecheck
 npm run build
 ```
 
-The pinned GenVM semantic linter passed all seven V1/V2.1 contracts with `GENVM_VERSION=v0.2.12`; the expanded direct suite passed `65` tests, frontend tests passed `38`, frontend typecheck, ESLint, production build, and deployment-entrypoint TypeScript checks passed. The new direct regressions cover concurrent manual/automatic expiration, active and queued review promotion, source-unavailable recovery, same-time expirations, stale callbacks, reopening, and beneficiary/accounting outcomes. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. No V2.1 deployment, funded case, challenge settlement, withdrawal, or V2.1 hosted execution is claimed.
+The pinned GenVM semantic linter passed all seven V1/V2.1 contracts with `GENVM_VERSION=v0.2.12`; the expanded direct suite passed `66` tests, frontend tests passed `38`, frontend typecheck, ESLint, production build, and deployment-entrypoint TypeScript checks passed. The new direct regressions cover concurrent manual/automatic expiration, active and queued review promotion, exact challenge-window finalization blocking, source-unavailable recovery, same-time expirations, stale callbacks, reopening, and beneficiary/accounting outcomes. These are local results, not proof that the updated Registry is on-chain. The Studionet integration test was intentionally not run because it deploys contracts and submits writes. No V2.1 deployment, funded case, challenge settlement, withdrawal, or V2.1 hosted execution is claimed.
 
 ## Deployment runbook — do not execute without separate approval
 

@@ -857,6 +857,25 @@ def test_challenge_cannot_be_submitted_at_window_boundary_or_after_finalization(
     assert registry.get_stats()["accounting_balanced"] is True
 
 
+def test_finalization_at_challenge_deadline_waits_for_an_admitted_unresolved_commitment(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    warp(direct_vm, NOW + 3599)
+    challenge_id = commit_unrevealed(direct_vm, registry, case_id, submission_id, direct_charlie, "88" * 32)
+
+    warp(direct_vm, NOW + 3600)
+    with pytest.raises(Exception, match="challenge commitments are unresolved"):
+        registry.finalize_provisional(case_id)
+    case = registry.get_case(case_id)
+    assert case["status"] == "PROVISIONAL_CLOSURE"
+    assert case["pending_challenge"] == ""
+    assert case["pending_challenge_ids"] == [challenge_id]
+    assert registry.get_challenge(challenge_id)["status"] == "COMMITTED"
+    assert case["can_finalize"] is False
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
 def test_bounded_pending_challenges_cannot_monopolize_the_window(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     warp(direct_vm)
     registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)

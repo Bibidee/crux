@@ -4,7 +4,7 @@
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
   "explorer": "https://explorer-studio.genlayer.com",
-  "status": "NOT_DEPLOYED",
+  "status": "READY_CONTRACT_LAYER",
   "basedOn": "651c5cec2c882d6dd3d26623cd81280a12c11830",
   "supersedes": {
     "product": "Crux Challenge V2.1",
@@ -23,14 +23,87 @@
     "judge": "contracts/challenge_closure_judge.py",
     "challengeAdjudicator": "contracts/challenge_adjudicator.py"
   },
-  "deploymentSourceCommit": "",
-  "deployer": "",
-  "contracts": {},
-  "transactions": {},
+  "deploymentSourceCommit": "0a3120b659b7ae953aae1cf4b8ac8fd18d50e1d7",
+  "deployer": "0x527da5f7022f14f7105e5f06cec1a8eff53556b5",
+  "contracts": {
+    "registry": {
+      "address": "0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E",
+      "txHash": "0xadfd0f753899033df0bcb551d02a333864a69414777ba5d6e2469e165ca79364",
+      "sourceFile": "contracts/crux_challenge_registry.py",
+      "sourceSha256": "335e4a96ace0059dfa93795ad6afc240a5ecf60a3b9db7aef3d408a8bd5e08aa",
+      "hash": "0xadfd0f753899033df0bcb551d02a333864a69414777ba5d6e2469e165ca79364"
+    },
+    "verifier": {
+      "address": "0x316aD5aeA2a010220107E676561507121E6356b5",
+      "txHash": "0xf87d9ba0523b5bf43825122cbcaff9ca91bd7e7089e688261e396dba08f19f67",
+      "sourceFile": "contracts/challenge_evidence_verifier.py",
+      "sourceSha256": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83",
+      "hash": "0xf87d9ba0523b5bf43825122cbcaff9ca91bd7e7089e688261e396dba08f19f67"
+    },
+    "judge": {
+      "address": "0x8c9Acf52F7C8502e957a37231CE1B53097703312",
+      "txHash": "0x97e7a2457e7a3d0e60be141e4c9d4045f038e80375984fbdd2cdf417fe13aca9",
+      "sourceFile": "contracts/challenge_closure_judge.py",
+      "sourceSha256": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9",
+      "hash": "0x97e7a2457e7a3d0e60be141e4c9d4045f038e80375984fbdd2cdf417fe13aca9"
+    },
+    "challengeAdjudicator": {
+      "address": "0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D",
+      "txHash": "0x9e8438ba7adb81415cf61609d57bcdbc1060994897157f09902ef3eb8b4f37a7",
+      "sourceFile": "contracts/challenge_adjudicator.py",
+      "sourceSha256": "d007976f3fb6fed5e78c11e61664255ad5db95438f525fc8843652e44a5bae10",
+      "hash": "0x9e8438ba7adb81415cf61609d57bcdbc1060994897157f09902ef3eb8b4f37a7"
+    }
+  },
+  "transactions": {
+    "configureComponents": {
+      "txHash": "0x7980e97ca9bda70f5e490fd662f1499cc0851a87e1a3f96f1d7bcefb048dabb1"
+    }
+  },
   "verification": {
-    "deployed": false,
-    "liveVerified": false,
+    "deployed": true,
+    "finalizedAndSuccessful": true,
+    "componentBindingsVerified": true,
+    "sourceHashesMatch": true,
+    "adminControls": false,
+    "accountingBalanced": true,
+    "independentReadback": true,
+    "liveVerified": true,
     "fundedLifecycleVerified": false,
-    "productionPublished": false
+    "productionPublished": true,
+    "productionDeployment": {
+      "id": "dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC",
+      "url": "https://frontend-4d2ji2d0g-bibidees-projects.vercel.app",
+      "alias": "https://crux-end.vercel.app",
+      "target": "production",
+      "status": "READY"
+    },
+    "getStatsReadback": {
+      "accounting_balanced": true,
+      "admin_controls": false,
+      "bond_escrow_atto": "0",
+      "case_escrow_atto": "0",
+      "cases_closed": "0",
+      "chain_id": "61999",
+      "challenge_adjudicator": "0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D",
+      "claimable_atto": "0",
+      "components_configured": true,
+      "judge": "0x8c9Acf52F7C8502e957a37231CE1B53097703312",
+      "network": "StudioNet",
+      "product": "Crux",
+      "protocol_fee_bps": "0",
+      "rejected_submissions": "0",
+      "retryable_submissions": "0",
+      "rpc": "https://studio.genlayer.com/api",
+      "total_cases": "0",
+      "total_challenges": "0",
+      "total_deposited_atto": "0",
+      "total_submissions": "0",
+      "verified_non_closing": "0",
+      "verifier": "0x316aD5aeA2a010220107E676561507121E6356b5",
+      "version": "0.2.1-studionet-challenge",
+      "withdrawal_receipts": "0",
+      "withdrawn_atto": "0"
+    }
   }
 }

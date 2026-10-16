@@ -201,6 +201,23 @@ def test_provisional_bounty_locked_and_permissionless_finalize(direct_vm, direct
         registry.withdraw_credit(addr(direct_bob))
 
 
+def test_withdrawal_is_recipient_bound_and_one_shot(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, _submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    direct_vm.sender = direct_charlie
+    with pytest.raises(Exception, match="only the credited recipient"):
+        registry.withdraw_credit(addr(direct_bob))
+    direct_vm.sender = direct_bob
+    registry.withdraw_credit(addr(direct_bob))
+    assert registry.get_credit(addr(direct_bob)) == "0"
+    assert registry.get_stats()["withdrawn_atto"] == str(BOUNTY + BOND)
+    with pytest.raises(Exception, match="no credit available"):
+        registry.withdraw_credit(addr(direct_bob))
+
+
 def test_invalid_challenge_penalty_goes_to_final_beneficiary(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     warp(direct_vm)
     registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
@@ -215,6 +232,219 @@ def test_invalid_challenge_penalty_goes_to_final_beneficiary(direct_vm, direct_d
     registry.finalize_provisional(case_id)
     assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + BOND + BOND)
     assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_forfeited_penalty_survives_insufficient_overturn_and_new_round(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    """A prior round's forfeited bond remains payable after reopening."""
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    invalid_challenger = direct_charlie
+    successful_challenger = "0x" + ("44" * 20)
+
+    invalid_id = submit_challenge(
+        direct_vm, registry, case_id, submission_id, invalid_challenger, direct_charlie,
+        salt="44" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(invalid_id, review("CHALLENGE_REJECTED", source_allowed=False))
+    first_round = registry.get_case(case_id)
+    assert first_round["pending_invalid_challenge_penalty_atto"] == str(BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == str(2 * BOND)
+
+    overturn_id = submit_challenge(
+        direct_vm, registry, case_id, submission_id, successful_challenger, direct_charlie,
+        salt="55" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(overturn_id, review(
+        "VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE",
+        challenged_evidence_id=submission_id,
+    ))
+    reopened = registry.get_case(case_id)
+    assert reopened["status"] == "REOPENED"
+    assert reopened["pending_invalid_challenge_penalty_atto"] == str(BOND)
+    assert registry.get_credit(addr(successful_challenger)) == str(BOND)
+    assert registry.get_credit(addr(direct_bob)) == str(BOND)
+
+    registry.reopen_case(case_id)
+    replacement_id = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/replacement-round-penalty",
+        "A fresh fact after the prior invalid challenge and reopening.",
+        salt="66" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(replacement_id, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The replacement fact is independently supported.",
+    }))
+    registry.record_closure(replacement_id, json.dumps({
+        "outcome": "OUTCOME_A", "sufficient": True,
+        "decisive_evidence_ids": [replacement_id],
+        "basis": "The replacement fact closes the reopened case.",
+    }))
+    second_round = registry.get_case(case_id)
+    assert second_round["pending_invalid_challenge_penalty_atto"] == str(BOND)
+
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    final_case = registry.get_case(case_id)
+    assert final_case["status"] == "CLOSED"
+    assert final_case["winner"].lower() == addr(direct_bob).lower()
+    assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + 3 * BOND)
+    assert registry.get_credit(addr(successful_challenger)) == str(BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == "0"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_forfeited_penalty_is_refunded_to_sponsor_when_reopened_case_expires(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    invalid_id = submit_challenge(
+        direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie,
+        salt="77" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(invalid_id, review("CHALLENGE_REJECTED", source_allowed=False))
+
+    successful_challenger = "0x" + ("66" * 20)
+    overturn_id = submit_challenge(
+        direct_vm, registry, case_id, submission_id, successful_challenger, direct_charlie,
+        salt="88" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(overturn_id, review(
+        "VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE", challenged_evidence_id=submission_id,
+    ))
+    registry.reopen_case(case_id)
+    warp(direct_vm, NOW + 7201)
+    registry.expire_case(case_id)
+
+    case = registry.get_case(case_id)
+    assert case["status"] == "EXPIRED"
+    assert registry.get_credit(addr(direct_alice)) == str(BOUNTY + BOND)
+    assert registry.get_credit(addr(direct_bob)) == str(BOND)
+    assert registry.get_credit(addr(successful_challenger)) == str(BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == "0"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_multiple_reopenings_carry_all_prior_forfeitures_to_terminal_beneficiary(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, first_submission = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+    challenger_one = "0x" + ("77" * 20)
+    challenger_two = "0x" + ("88" * 20)
+
+    invalid_one = submit_challenge(
+        direct_vm, registry, case_id, first_submission, direct_charlie, direct_charlie,
+        salt="91" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(invalid_one, review("CHALLENGE_REJECTED", source_allowed=False))
+    overturn_one = submit_challenge(
+        direct_vm, registry, case_id, first_submission, challenger_one, direct_charlie,
+        salt="92" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(overturn_one, review(
+        "VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE", challenged_evidence_id=first_submission,
+    ))
+    registry.reopen_case(case_id)
+
+    second_submission = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/second-round", "A second-round fact after the first reopening.",
+        salt="93" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(second_submission, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The second-round fact is supported.",
+    }))
+    registry.record_closure(second_submission, json.dumps({
+        "outcome": "OUTCOME_A", "sufficient": True,
+        "decisive_evidence_ids": [second_submission], "basis": "The second-round fact is decisive.",
+    }))
+    invalid_two = submit_challenge(
+        direct_vm, registry, case_id, second_submission, direct_charlie, direct_charlie,
+        salt="94" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(invalid_two, review(
+        "CHALLENGE_REJECTED", source_allowed=False, challenged_evidence_id=second_submission,
+    ))
+    overturn_two = submit_challenge(
+        direct_vm, registry, case_id, second_submission, challenger_two, direct_charlie,
+        salt="95" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(overturn_two, review(
+        "VERDICT_OVERTURNED", "INSUFFICIENT_EVIDENCE", challenged_evidence_id=second_submission,
+    ))
+    registry.reopen_case(case_id)
+
+    final_submission = submit_evidence(
+        direct_vm, registry, case_id, direct_bob,
+        "https://example.com/final-round", "A final fact after two prior reopenings.",
+        salt="96" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_verification(final_submission, json.dumps({
+        "status": "VERIFIED", "same_subject": True, "source_allowed": True,
+        "claim_supported": True, "correct_time_scope": True, "materially_new": True,
+        "non_contradictory": True, "basis": "The final-round fact is supported.",
+    }))
+    registry.record_closure(final_submission, json.dumps({
+        "outcome": "OUTCOME_A", "sufficient": True,
+        "decisive_evidence_ids": [final_submission], "basis": "The final-round fact is decisive.",
+    }))
+    assert registry.get_case(case_id)["pending_invalid_challenge_penalty_atto"] == str(2 * BOND)
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+
+    assert registry.get_case(case_id)["status"] == "CLOSED"
+    assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + 5 * BOND)
+    assert registry.get_credit(addr(challenger_one)) == str(BOND)
+    assert registry.get_credit(addr(challenger_two)) == str(BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == "0"
+    assert registry.get_stats()["accounting_balanced"] is True
+
+
+def test_eight_rejected_challenges_exhaust_the_bounded_round_budget(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
+    """The bounded permissionless cap is observable and can deny a late challenger."""
+    warp(direct_vm)
+    registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
+    case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
+
+    for index in range(8):
+        challenge_id = submit_challenge(
+            direct_vm, registry, case_id, submission_id, direct_charlie, direct_charlie,
+            salt=f"{80 + index:02x}" * 32,
+        )
+        direct_vm.sender = direct_charlie
+        registry.record_challenge_review(challenge_id, review("CHALLENGE_REJECTED", source_allowed=False))
+
+    case = registry.get_case(case_id)
+    assert case["challenge_count"] == 8
+    assert case["pending_invalid_challenge_penalty_atto"] == str(8 * BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == str(9 * BOND)
+
+    honest_challenger = "0x" + ("55" * 20)
+    direct_vm.sender, direct_vm.value = honest_challenger, BOND
+    with pytest.raises(Exception, match="challenge limit reached"):
+        registry.commit_challenge(case_id, submission_id, submission_id, "99" * 32)
+    direct_vm.value = 0
+    assert registry.get_case(case_id)["challenge_count"] == 8
+    assert registry.get_stats()["accounting_balanced"] is True
+    warp(direct_vm, NOW + 3601)
+    registry.finalize_provisional(case_id)
+    assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + BOND + 8 * BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == "0"
 
 
 def test_valid_immaterial_challenge_refunds_bond_and_keeps_verdict(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):

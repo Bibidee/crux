@@ -1,0 +1,37 @@
+{
+  "product": "Crux Challenge V2.2 Candidate",
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "explorer": "https://explorer-studio.genlayer.com",
+  "status": "NOT_DEPLOYED",
+  "basedOn": "651c5cec2c882d6dd3d26623cd81280a12c11830",
+  "supersedes": {
+    "product": "Crux Challenge V2.1",
+    "registry": "0xA258Ef6f5e2ACB3512c37ACC71544D94Caa7520c",
+    "reason": "Carry forfeited and unrevealed challenge-bond obligations across insufficient-evidence reopenings and later provisional rounds."
+  },
+  "sourceHashes": {
+    "registry": "b51e83ad5ce380221e2fd3f46806023e038358cca25e45878dc1055bdae3d1e5",
+    "verifier": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83",
+    "judge": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9",
+    "challengeAdjudicator": "d007976f3fb6fed5e78c11e61664255ad5db95438f525fc8843652e44a5bae10"
+  },
+  "sourceFiles": {
+    "registry": "contracts/crux_challenge_registry.py",
+    "verifier": "contracts/challenge_evidence_verifier.py",
+    "judge": "contracts/challenge_closure_judge.py",
+    "challengeAdjudicator": "contracts/challenge_adjudicator.py"
+  },
+  "deployment": {
+    "requiredWrites": 5,
+    "addresses": {},
+    "transactions": {}
+  },
+  "verification": {
+    "deployed": false,
+    "liveVerified": false,
+    "fundedLifecycleVerified": false,
+    "productionPublished": false
+  }
+}

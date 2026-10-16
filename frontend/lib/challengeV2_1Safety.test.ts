@@ -6,10 +6,12 @@ import { assertChallengeV2_1Manifest, canonicalSourceSha256, CHALLENGE_V2_1_PLAN
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const manifest = JSON.parse(readFileSync(path.join(root, "deployments/challenge-v2-1-studionet.json"), "utf8"));
+const candidate = JSON.parse(readFileSync(path.join(root, "deployments/challenge-v2-2-studionet.json"), "utf8"));
 const sourceHashes = Object.fromEntries(CHALLENGE_V2_1_PLAN.map(({ key, file }) => [
   key,
   canonicalSourceSha256(readFileSync(path.join(root, file))),
 ]));
+const reviewedSourceHashes = manifest.sourceHashes;
 
 describe("V2.1 deployment safety", () => {
   it("skips automatically loaded entrypoints unless the version-specific flag is set", () => {
@@ -28,7 +30,7 @@ describe("V2.1 deployment safety", () => {
   });
 
   it("accepts the independently verified Studionet manifest with exact reviewed source hashes", () => {
-    expect(() => assertChallengeV2_1Manifest(manifest, sourceHashes)).not.toThrow();
+    expect(() => assertChallengeV2_1Manifest(manifest, reviewedSourceHashes)).not.toThrow();
     expect(manifest.status).toBe("READY_CONTRACT_LAYER");
     expect(Object.keys(manifest.contracts).sort()).toEqual(["challengeAdjudicator", "judge", "registry", "verifier"]);
     expect(manifest.transactions).toHaveProperty("configureComponents");
@@ -42,14 +44,34 @@ describe("V2.1 deployment safety", () => {
   });
 
   it("rejects a changed source, wrong network, unknown stage, or a false empty-history claim", () => {
-    expect(() => assertChallengeV2_1Manifest(manifest, { ...sourceHashes, registry: "0".repeat(64) }))
+    expect(() => assertChallengeV2_1Manifest(manifest, { ...reviewedSourceHashes, registry: "0".repeat(64) }))
       .toThrow(/source hash differs/);
-    expect(() => assertChallengeV2_1Manifest({ ...manifest, chainId: 61997 }, sourceHashes))
+    expect(() => assertChallengeV2_1Manifest({ ...manifest, chainId: 61997 }, reviewedSourceHashes))
       .toThrow(/wrong release or network/);
-    expect(() => assertChallengeV2_1Manifest({ ...manifest, status: "READY" }, sourceHashes))
+    expect(() => assertChallengeV2_1Manifest({ ...manifest, status: "READY" }, reviewedSourceHashes))
       .toThrow(/unknown manifest stage/);
     const unspent = { ...manifest, status: "NOT_DEPLOYED", contracts: {}, transactions: {} };
-    expect(() => assertChallengeV2_1Manifest({ ...unspent, contracts: { registry: {} } }, sourceHashes))
+    expect(() => assertChallengeV2_1Manifest({ ...unspent, contracts: { registry: {} } }, reviewedSourceHashes))
       .toThrow(/NOT_DEPLOYED manifest already contains transaction history/);
+  });
+
+  it("refuses to treat the corrected Registry source as the immutable V2.1 deployment", () => {
+    expect(sourceHashes.registry).not.toBe(reviewedSourceHashes.registry);
+    expect(() => assertChallengeV2_1Manifest(manifest, sourceHashes)).toThrow(/source hash differs/);
+  });
+
+  it("keeps the corrected V2.2 source explicitly undeployed", () => {
+    expect(candidate.status).toBe("NOT_DEPLOYED");
+    expect(candidate.chainId).toBe(61999);
+    expect(candidate.rpc).toBe("https://studio.genlayer.com/api");
+    expect(candidate.sourceHashes).toEqual(sourceHashes);
+    expect(candidate.deployment.addresses).toEqual({});
+    expect(candidate.deployment.transactions).toEqual({});
+    expect(candidate.verification).toEqual({
+      deployed: false,
+      liveVerified: false,
+      fundedLifecycleVerified: false,
+      productionPublished: false,
+    });
   });
 });

@@ -679,10 +679,13 @@ class CruxChallengeRegistry(gl.Contract):
             "closing_submission": submission_id,
             # Each provisional decision gets a fresh challenge budget. The
             # challenge_ids array remains append-only historical evidence.
+            # Invalid/unrevealed challenge penalties are case-level obligations
+            # and must carry across reopening; resetting them here would leave
+            # the corresponding bond in escrow without a settlement reference.
             "challenge_round": submission_id, "challenge_count": 0,
             "pending_challenge": "", "pending_challenge_ids": [],
             "challenge_review_queue": [], "challenge_review_deadline": "0",
-            "challenge_recovery_deadline": "0", "pending_invalid_challenge_penalty_atto": "0",
+            "challenge_recovery_deadline": "0",
             "pending_final_outcome": "", "pending_final_beneficiary": "",
             "final_decision_evidence": {
                 "kind": "PROVISIONAL_CLOSURE", "submission_id": submission_id,

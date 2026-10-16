@@ -9,6 +9,7 @@ import { formatGen, shortAddress } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { TransactionNotice } from "@/components/TransactionNotice";
 import type { ChallengeCase, ChallengeRecord, Submission } from "@/lib/types";
+import { getChallengeActionState, isChallengeWriteReady } from "@/lib/challengeActions";
 
 type PendingItem = {
   caseId: string;
@@ -264,18 +265,16 @@ export default function ChallengeV2Page() {
 
   const original = submissions.find((item) => item.id === caseData?.provisional_submission);
   const challengePending = challenges.find((item) => item.id === caseData?.pending_challenge);
-  const pendingChallengeCount = caseData?.pending_challenge_count || 0;
-  const challengeSlots = Math.max(0, 4 - pendingChallengeCount);
-  const chainReady = CHALLENGE_V2_WRITES_ENABLED && wallet.connected && wallet.correctNetwork;
+  const actionState = caseData ? getChallengeActionState(caseData, challenges, now) : null;
+  const expiredReviewId = actionState?.expiredReviewId;
+  const expiredUnrevealedId = actionState?.expiredUnrevealedId;
+  const challengeSlots = Math.max(0, 4 - (caseData?.pending_challenge_count || 0));
+  const chainReady = isChallengeWriteReady(CHALLENGE_V2_WRITES_ENABLED, wallet.connected, wallet.correctNetwork);
   const deadline = caseData?.challenge_status === "REVIEW_TIMEOUT_RECOVERY"
     ? caseData.challenge_recovery_deadline
     : caseData?.status === "CHALLENGE_REVIEW" && caseData.challenge_review_deadline
       ? caseData.challenge_review_deadline : caseData?.challenge_deadline;
-  const reviewCanExpire = Boolean(caseData?.pending_challenge && caseData.status === "CHALLENGE_REVIEW"
-    && caseData.challenge_review_deadline && Number(caseData.challenge_review_deadline) <= now);
-  const canChallenge = ["PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW"].includes(caseData?.status || "")
-    && ["OPEN", "REVIEW_PENDING", "REJECTED", "VERDICT_UPHELD", "UNREVEALED", "REVIEW_TIMEOUT_RECOVERY"].includes(caseData?.challenge_status || "")
-    && challengeSlots > 0;
+  const reviewCanExpire = Boolean(actionState?.expiredReviewId);
 
   return <div className="page-shell challenge-v2-shell">
     <div className="page-heading">
@@ -379,7 +378,15 @@ export default function ChallengeV2Page() {
             <Field label="Public source URL"><input type="url" placeholder="https://" value={evidenceUrl} onChange={(e) => setEvidenceUrl(e.target.value)} /></Field>
             <Field label="Exact fact"><textarea value={evidenceFact} onChange={(e) => setEvidenceFact(e.target.value)} /></Field>
             <button className="primary-button" disabled={!chainReady || !!busy} onClick={() => void commitPacket("evidence")}>Commit evidence · bond {formatGen(caseData.bond_atto)} GEN</button>
-          </> : canChallenge ? <>
+          </> : expiredReviewId ? <>
+            <div className="eyebrow">Review recovery</div><h3>Challenge review timed out</h3>
+            <p>The review deadline has passed. Recover this challenge before finalization.</p>
+            <button className="secondary-button" disabled={!chainReady || !!busy} onClick={() => void act("Expire timed out challenge", "expire_challenge", [expiredReviewId])}>Recover after review timeout</button>
+          </> : expiredUnrevealedId ? <>
+            <div className="eyebrow">Challenge cleanup</div><h3>Reveal deadline passed</h3>
+            <p>Clean up the abandoned commitment so finalization can become eligible.</p>
+            <button className="secondary-button" disabled={!chainReady || !!busy} onClick={() => void act("Expire abandoned challenge", "expire_challenge", [expiredUnrevealedId])}>Expire abandoned challenge</button>
+          </> : actionState?.canChallenge ? <>
             <div className="eyebrow">Challenge the provisional conclusion</div><h3>Submit source-backed counterevidence</h3>
             <p>Challenge the same subject, version, and time scope. The source must materially contradict the evidence behind this outcome.</p>
             <small>Source policy: {caseData.source_policy}</small>
@@ -390,10 +397,13 @@ export default function ChallengeV2Page() {
             <div className="bond-line"><span>Invalid challenge bond</span><b>goes to the final beneficiary</b></div>
           </> : <>
             <div className="eyebrow">Next protocol action</div><h3>{caseData.status.replaceAll("_", " ")}</h3>
-            {caseData.can_finalize ? <button className="primary-button" disabled={!chainReady || !!busy} onClick={() => void act("Provisional finalization", "finalize_provisional", [caseData.id])}>Finalize verdict</button> : null}
-            {caseData.status === "REOPENED" ? <button className="primary-button" disabled={!chainReady || !!busy} onClick={() => void act("Reopen case", "reopen_case", [caseData.id])}>Reopen evidence submissions</button> : null}
+            {actionState?.canFinalize ? <button className="primary-button" disabled={!chainReady || !!busy} onClick={() => void act("Provisional finalization", "finalize_provisional", [caseData.id])}>Finalize verdict</button> : null}
+            {actionState?.canReopen ? <button className="primary-button" disabled={!chainReady || !!busy} onClick={() => void act("Reopen case", "reopen_case", [caseData.id])}>Reopen evidence submissions</button> : null}
+            {!actionState?.canFinalize && caseData.status === "PROVISIONAL_CLOSURE"
+              && now >= Number(caseData.challenge_deadline || "0") && !caseData.pending_challenge
+              ? <button className="secondary-button" disabled={!!busy} onClick={() => setRefreshKey((n) => n + 1)}>Refresh finalization state</button> : null}
             {caseData.pending_challenge && challengePending ? <><p>Challenge {challengePending.id} is under independent review. The bounty remains escrowed.</p>{reviewCanExpire ? <button className="secondary-button" disabled={!chainReady || !!busy} onClick={() => void act("Expire timed out challenge", "expire_challenge", [challengePending.id])}>Recover after review timeout</button> : <p className="field-help">Waiting for the review deadline before recovery becomes available.</p>}</> : null}
-            {caseData.status === "PROVISIONAL_CLOSURE" && caseData.can_finalize ? <p>Challenge window has ended. Anyone can finalize the result.</p> : null}
+            {caseData.status === "PROVISIONAL_CLOSURE" && actionState?.canFinalize ? <p>Challenge window has ended. Anyone can finalize the result.</p> : null}
           </>}
           <div className="bond-line"><span>Contributor bond</span><b>{formatGen(caseData.bond_atto)} GEN</b></div>
         </section>

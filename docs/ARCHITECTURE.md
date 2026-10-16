@@ -98,4 +98,4 @@ sponsor, while still-timely sealed commitments and revealed queued or pending
 commitments go back to their contributors.
 Every path marks the submission settled and releases active capacity once.
 
-Credits use pull withdrawals so an external transfer failure cannot interrupt the semantic state transition.
+Credits use recipient-bound pull withdrawals so a failed external transfer cannot rewind the semantic state transition. GenLayer external transfers are asynchronous finalized messages; the contract clears credit before emitting them, so the recorded withdrawal is not by itself proof that a rejecting contract recipient received value.

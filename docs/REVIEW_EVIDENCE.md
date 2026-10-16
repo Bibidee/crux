@@ -6,43 +6,63 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 
 The four-contract Challenge V2.2 set is deployed on Studionet chain `61999` and independently verified against the exact source hashes in [`../deployments/challenge-v2-2-studionet.json`](../deployments/challenge-v2-2-studionet.json). Its Registry is [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E), with Evidence Verifier [`0x316aD5aeA2a010220107E676561507121E6356b5`](https://explorer-studio.genlayer.com/address/0x316aD5aeA2a010220107E676561507121E6356b5), Closure Judge [`0x8c9Acf52F7C8502e957a37231CE1B53097703312`](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312), and Challenge Adjudicator [`0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D`](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D). The five setup transactions finalized successfully; `get_stats` readback reports `components_configured=true`, `admin_controls=false`, `accounting_balanced=true`, and zero cases and escrow.
 
-Production is published at [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge) as Vercel deployment [`dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC`](https://vercel.com/bibidees-projects/frontend/Jeoc5DyPJCaxt5Zg4661Tz9a2vtC), status `READY`, and the public bundle contains the exact V2.2 Registry address. A funded two-wallet V2.2 lifecycle has not yet been executed, so no V2.2 case, submission, verification, closure, or withdrawal hashes are claimed here.
+Production is published at [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge) as Vercel deployment [`dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC`](https://vercel.com/bibidees-projects/frontend/Jeoc5DyPJCaxt5Zg4661Tz9a2vtC), status `READY`, and the public bundle contains the exact V2.2 Registry address. A funded three-wallet V2.2 lifecycle has not yet been executed, so no V2.2 case, submission, verification, closure, or withdrawal hashes are claimed here.
+
+Current V2.2 setup transactions:
+
+| Component | Address | Finalized transaction |
+|---|---|---|
+| Registry | [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E) | [`0xadfd0f753899033df0bcb551d02a333864a69414777ba5d6e2469e165ca79364`](https://explorer-studio.genlayer.com/tx/0xadfd0f753899033df0bcb551d02a333864a69414777ba5d6e2469e165ca79364) |
+| Evidence Verifier | [`0x316aD5aeA2a010220107E676561507121E6356b5`](https://explorer-studio.genlayer.com/address/0x316aD5aeA2a010220107E676561507121E6356b5) | [`0xf87d9ba0523b5bf43825122cbcaff9ca91bd7e7089e688261e396dba08f19f67`](https://explorer-studio.genlayer.com/tx/0xf87d9ba0523b5bf43825122cbcaff9ca91bd7e7089e688261e396dba08f19f67) |
+| Closure Judge | [`0x8c9Acf52F7C8502e957a37231CE1B53097703312`](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312) | [`0x97e7a2457e7a3d0e60be141e4c9d4045f038e80375984fbdd2cdf417fe13aca9`](https://explorer-studio.genlayer.com/tx/0x97e7a2457e7a3d0e60be141e4c9d4045f038e80375984fbdd2cdf417fe13aca9) |
+| Challenge Adjudicator | [`0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D`](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D) | [`0x9e8438ba7adb81415cf61609d57bcdbc1060994897157f09902ef3eb8b4f37a7`](https://explorer-studio.genlayer.com/tx/0x9e8438ba7adb81415cf61609d57bcdbc1060994897157f09902ef3eb8b4f37a7) |
+| One-time component binding | — | [`0x7980e97ca9bda70f5e490fd662f1499cc0851a87e1a3f96f1d7bcefb048dabb1`](https://explorer-studio.genlayer.com/tx/0x7980e97ca9bda70f5e490fd662f1499cc0851a87e1a3f96f1d7bcefb048dabb1) |
 
 | Review area | Repository evidence | Live evidence before submission |
 |---|---|---|
-| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-6` closed through real baseline, verifier, closure consensus; payout withdrawn |
-| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | Wallet A funded `cx-6`; Wallet B won and withdrew |
-| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | `cx-6` baseline finalized as `INSUFFICIENT_EVIDENCE`, then opened for candidate evidence |
+| GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | V2.2 funded lifecycle `NOT_STARTED`; historical V1 evidence is not reused as proof |
+| Conflicting incentives | Sponsor funds bounty; contributor seeks payout; rejected/unrevealed bond goes to sponsor | V2.2 funded lifecycle `NOT_STARTED`; three-wallet plan is prepared |
+| Current external facts | Baseline and candidate source URLs are fetched inside GenVM | V2.2 funded lifecycle `NOT_STARTED`; source plan is prepared in `LIVE_DEMO.md` |
 | Substantive validation | Verifier compares six semantic fields; ClosureJudge independently replays outcome/sufficiency | Add a validator disagreement/negative test result |
-| Non-trivial architecture | Registry + EvidenceVerifier + ClosureJudge with finalized cross-contract messages | Smoke passed; addresses below |
+| Non-trivial architecture | Registry + EvidenceVerifier + ClosureJudge + ChallengeAdjudicator with finalized cross-contract messages | V2.2 setup receipts and bindings independently verified; funded lifecycle `NOT_STARTED` |
 | Failure handling | SOURCE_UNAVAILABLE, retryable baseline, stage deadlines, expiry, stale callbacks, rejected/unrevealed paths | `cx-1` real baseline returned `BASELINE_ALREADY_DECIDABLE` and refunded |
-| Accounting | Pull credits + exposed conservation invariant | Final registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
+| Accounting | Pull credits + exposed conservation invariant | Final V2.2 Registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
 | Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is live and verified against the current Registry |
-| Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Live transactions and final stats verified on chain 61999 |
-| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | CI `35452794519` on `bf97bce` passed: 3 lints, 22 direct tests, 3 frontend regression tests, typecheck and build |
+| Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Setup transactions and final stats verified on chain 61999; funded lifecycle `NOT_STARTED` |
+| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | CI run `38854054041` on `cacecc8c5c15bcc5664713ec5216f6f1d573ea11` concluded `success`; local final suite is recorded below |
 
 ## Final command evidence
 
 ```text
-GENVM_VERSION=v0.2.12 genvm-lint check contracts/{crux_registry,evidence_verifier,closure_judge}.py --json: PASS (all three structural + semantic checks; 3 methods validated per contract set, Registry 18 methods / 2 constructor params)
-pytest tests/direct/ -v: PASS (13 passed; Windows-compatible calldata tempfile harness added in `tests/direct/conftest.py`)
-CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s: PASS (1 passed, real Studionet RPC; deployment/schema wiring)
-npm run typecheck: PASS
-npm run build: PASS (Next.js 15.5.7)
+GENVM_VERSION=v0.2.12 genvm-lint: PASS (Registry, EvidenceVerifier, ClosureJudge and ChallengeAdjudicator)
+pytest -p no:cacheprovider tests/direct/ -q: PASS (71 passed)
+npm --prefix frontend test: PASS (10 files, 51 tests)
+npm --prefix frontend run typecheck: PASS
+npm --prefix frontend run build: PASS (Next.js 15.5.7)
+ESLint: NOT CONFIGURED (no frontend ESLint script/config is present)
+Studionet integration: NOT RUN in this audit because it performs new state-changing writes; no GEN was spent.
 ```
 
-## Deployment
+## Current V2.2 deployment
 
 ```text
-Registry: [0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235) — tx `0x11cad9b0ffa8b74568994cb2b1db7abd67a5b044408414b18df65dd5cca94ee3`
-EvidenceVerifier: [0x9148a71Ad881865FEbF41548d0c77D6d3f836B17](https://explorer-studio.genlayer.com/address/0x9148a71Ad881865FEbF41548d0c77D6d3f836B17) — tx `0x72c7db89774e8ee7407cf6909e4e6ff147273a8d35a013d7aa93aa7152ddfe6a`
-ClosureJudge: [0x216598A7584BF42E2Ce20f1E5B46c9D3603d3d64](https://explorer-studio.genlayer.com/address/0x216598A7584BF42E2Ce20f1E5B46c9D3603d3d64) — tx `0x34775a3c8fe8e0d312aa7cca486891d2d96297e0aa43ad5ad6fa9553170caef1`; component binding tx `0xe96a03676f911372ccb6997dfd0dc0da7f0c493e22285a08ff73374c86f0b4e9`
-Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_2vi9bAF4gj37xsKdmFUtskRFscXH`, verified against source commit `9cbcb2c`.
+Registry: [0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E) — tx `0xadfd0f753899033df0bcb551d02a333864a69414777ba5d6e2469e165ca79364`
+EvidenceVerifier: [0x316aD5aeA2a010220107E676561507121E6356b5](https://explorer-studio.genlayer.com/address/0x316aD5aeA2a010220107E676561507121E6356b5) — tx `0xf87d9ba0523b5bf43825122cbcaff9ca91bd7e7089e688261e396dba08f19f67`
+ClosureJudge: [0x8c9Acf52F7C8502e957a37231CE1B53097703312](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312) — tx `0x97e7a2457e7a3d0e60be141e4c9d4045f038e80375984fbdd2cdf417fe13aca9`
+ChallengeAdjudicator: [0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D) — tx `0x9e8438ba7adb81415cf61609d57bcdbc1060994897157f09902ef3eb8b4f37a7`
+Component binding: tx `0x7980e97ca9bda70f5e490fd662f1499cc0851a87e1a3f96f1d7bcefb048dabb1`
+Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC`, verified READY.
 ```
 
 ## Live demonstration transactions
 
-Historical previous-registry flow: `cx-3` is preserved in the manifest. Current-registry flow: `cx-6`, create `0x4cc094fe2260f0afb42e812409d6af89a4addb00df8d07d5e796cfab19e4ee0b`, submission `cs-2`, commit `0xf8c3d7b1c65544962a08d95498ec4e39ca05d979ea4f18d493483688a55732a7`, reveal `0x4f20b89bd684850d34b5a5c4a69f1f1ac432014bdf9d8c1eb30fbc524a8c3d21`, verifier `VERIFIED`, closure `OUTCOME_A`, winner `0x2cd419603eBa593074653930Ddc4073d4FD8fc60`, withdrawal `0xb333d885c8112685bbd617fa3bfbf07fced200b1f4bfcdff00e1dd94d2c568f1`.
+V2.2 Case A (upheld challenge): `NOT_STARTED` — no funded V2.2 hashes are claimed.
+V2.2 Case B (material overturn): `NOT_STARTED` — no funded V2.2 hashes are claimed.
+V2.2 Case C (optional reopening): `NOT_STARTED` and not authorized.
+
+Historical V1 flow, not V2.2 proof: `cx-6`, create `0x4cc094fe2260f0afb42e812409d6af89a4addb00df8d07d5e796cfab19e4ee0b`, submission `cs-2`, commit `0xf8c3d7b1c65544962a08d95498ec4e39ca05d979ea4f18d493483688a55732a7`, reveal `0x4f20b89bd684850d34b5a5c4a69f1f1ac432014bdf9d8c1eb30fbc524a8c3d21`, verifier `VERIFIED`, closure `OUTCOME_A`, winner `0x2cd419603eBa593074653930Ddc4073d4FD8fc60`, withdrawal `0xb333d885c8112685bbd617fa3bfbf07fced200b1f4bfcdff00e1dd94d2c568f1`.
+
+### Historical V1 transaction details
 
 ```text
 Case create: `cx-1`, sponsor Wallet A `0x7eB2a4B4e913Df62eAe807eF60509B3B7284C7FA`, tx `0xecfe5c8607598584ae46cb6b436a9466b303c0d3b12e403c22f9c7a135353ddd`

@@ -8,6 +8,7 @@ import { injectedProvider, normalizeAccounts, RPC_URL, sameWallet, CHAIN_ID } fr
 import { serializeReadCacheKey } from "./cache-key";
 import { requireSuccessfulExecution } from "./transactionReceipt";
 import { isChallengeV2WriteEnabled, requireChallengeV2WriteEnabled } from "./challengeV2Safety";
+import { submitWriteOnce, withReadRpcBudget } from "./rpcBudget";
 export { serializeReadCacheKey } from "./cache-key";
 import type { CruxCase, ProtocolStats, Submission } from "./types";
 
@@ -23,68 +24,10 @@ type WriteRequest = {
   value?: bigint;
 };
 
-// Studionet currently allows roughly 30 RPC requests per minute. Keep a
-// client-wide budget so multiple pages/components share one polite queue
-// instead of stampeding the endpoint during consensus polling.
-const RPC_WINDOW_MS = 60_000;
-const RPC_BUDGET = 24;
-const rpcTimes: number[] = [];
 const readCache = new Map<string, { expires: number; value: unknown }>();
 const readInflight = new Map<string, Promise<unknown>>();
 const writeInflight = new Map<string, Promise<string>>();
-
-async function reserveRpc(): Promise<void> {
-  while (true) {
-    const now = Date.now();
-    while (rpcTimes.length && now - rpcTimes[0] >= RPC_WINDOW_MS) rpcTimes.shift();
-    if (rpcTimes.length < RPC_BUDGET) { rpcTimes.push(now); return; }
-    await new Promise((resolve) => setTimeout(resolve, Math.max(500, RPC_WINDOW_MS - (now - rpcTimes[0]) + 50)));
-  }
-}
-
-function isRateLimited(error: unknown): boolean {
-  const text = (error instanceof Error ? error.message : String(error)).toLowerCase();
-  return text.includes("rate limit") || text.includes("too many requests") || text.includes("429") || text.includes("fetch failed");
-}
-
-async function withReadRpcBudget<T>(operation: () => Promise<T>): Promise<T> {
-  let delay = 1500;
-  for (let attempt = 0; ; attempt += 1) {
-    await reserveRpc();
-    try { return await operation(); }
-    catch (error) {
-      if (!isRateLimited(error) || attempt >= 3) throw error;
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      delay = Math.min(delay * 2, 12_000);
-    }
-  }
-}
-
-function isAmbiguousWriteError(error: unknown): boolean {
-  const text = (error instanceof Error ? error.message : String(error)).toLowerCase();
-  return text.includes("rate limit") || text.includes("too many requests") || text.includes("429")
-    || text.includes("fetch failed") || text.includes("network") || text.includes("timeout")
-    || text.includes("timed out") || text.includes("connection");
-}
-
-/**
- * Send a state-changing transaction exactly once. A lost response may mean
- * the wallet already broadcast it, so this helper deliberately never retries.
- */
-export async function submitWriteOnce<T>(operation: () => Promise<T>): Promise<T> {
-  await reserveRpc();
-  try {
-    return await operation();
-  } catch (error) {
-    if (isAmbiguousWriteError(error)) {
-      throw new Error(
-        "Transaction submission status is unknown; it may already be broadcast. Check the wallet and authoritative contract state before retrying.",
-        { cause: error },
-      );
-    }
-    throw error;
-  }
-}
+export { submitWriteOnce } from "./rpcBudget";
 
 function assertRegistryAddress(address: string): `0x${string}` {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {

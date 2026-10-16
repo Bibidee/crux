@@ -1,4 +1,4 @@
-import { isFinalizedSuccessfulReceipt } from "../../scripts/receiptSafety.js";
+import { isFinalizedSuccessfulReceipt } from "./receiptSafety";
 
 export function requireSuccessfulExecution<T>(receipt: T, transactionHash: string): T {
   if (!isFinalizedSuccessfulReceipt(receipt)) {

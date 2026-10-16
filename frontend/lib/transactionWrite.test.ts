@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { submitWriteOnce } from "./crux";
+import { submitWriteOnce } from "./rpcBudget";
 
 describe("state-changing RPC writes", () => {
   it("does not retry an ambiguous broadcast failure", async () => {

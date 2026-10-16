@@ -1,6 +1,6 @@
 # Live Studionet demo
 
-The final release should demonstrate the whole trust path with two funded Studio wallets and real explorer links. Do not substitute mocks or screenshots of local state.
+The final release should demonstrate the whole trust path with three distinct funded Studio wallets and real explorer links. Do not substitute mocks or screenshots of local state.
 
 ## Current Challenge V2.2 deployment
 
@@ -13,7 +13,7 @@ The current Challenge V2 route is wired to the independently verified Studionet 
 - Network: Studionet, chain `61999`, RPC `https://studio.genlayer.com/api`
 - Frontend: [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge)
 
-All five deployment writes finalized successfully, component bindings and source hashes were independently read back, and the production frontend is `READY`. The funded two-wallet V2.2 lifecycle is still pending; the historical `cx-6` hashes below belong to the earlier V1 Registry and must not be presented as V2.2 evidence.
+All five deployment writes finalized successfully, component bindings and source hashes were independently read back, and the production frontend is `READY`. The funded three-wallet V2.2 lifecycle is still pending; the historical `cx-6` hashes below belong to the earlier V1 Registry and must not be presented as V2.2 evidence.
 
 ## Suggested case
 
@@ -50,9 +50,9 @@ The baseline should remain insufficient because the accepted evidence graph only
 5. Confirm baseline child transaction succeeds and case becomes `OPEN`.
 6. Record Registry address, case ID and explorer transaction links.
 
-## Wallet B — contributor
+## Wallet B — original contributor
 
-Current live state: `cx-6` is `CLOSED` with `OUTCOME_A`. Bob submission `cs-2` is `CLOSED_WINNER`, and the `1000000000000000` attoGEN credit was withdrawn.\r\n\r\nLive hashes: create `0x4cc094fe2260f0afb42e812409d6af89a4addb00df8d07d5e796cfab19e4ee0b`; commit `0xf8c3d7b1c65544962a08d95498ec4e39ca05d979ea4f18d493483688a55732a7`; reveal `0x4f20b89bd684850d34b5a5c4a69f1f1ac432014bdf9d8c1eb30fbc524a8c3d21`; withdrawal `0xb333d885c8112685bbd617fa3bfbf07fced200b1f4bfcdff00e1dd94d2c568f1`.\r\n\r\nSubmit the same official documentation URL with the *new* claimed fact:
+The following is historical V1 evidence only: `cx-6` is `CLOSED` with `OUTCOME_A`; it is not evidence of the V2.2 challenge lifecycle. For the current V2.2 run, submit the same official documentation URL with the *new* claimed fact:
 
 > `The GenLayer RPC for stable Studionet is https://studio.genlayer.com/api.`
 
@@ -63,6 +63,10 @@ Current live state: `cx-6` is `CLOSED` with `OUTCOME_A`. Bob submission `cs-2` i
 5. Confirm Registry case becomes `CLOSED`, winner is Wallet B and bounty becomes Wallet B credit.
 6. Withdraw the credit and record the transfer transaction.
 
+## Wallet C — independent challenger
+
+Use a third funded wallet distinct from the sponsor and provisional winner. Commit and reveal source-backed counterevidence against the exact decisive evidence ID, then record the adjudicator result. Do not force an overturn: preserve the actual validator verdict.
+
 ## Negative demonstrations
 
 Run at least two additional cases/submissions and preserve explorer links:
@@ -70,6 +74,8 @@ Run at least two additional cases/submissions and preserve explorer links:
 - **Disallowed source:** submit a third-party blog under the same official-only source policy. Expected: `REJECTED`, no bounty.
 - **True but non-closing:** create a case with one more missing requirement, submit the RPC fact, and show `VERIFIED_NON_CLOSING` plus the fact being added to the accepted graph.
 - If convenient, demonstrate an unavailable URL producing `RETRYABLE_SOURCE`, not rejection.
+
+Before any write, obtain explicit authorization for the exact three-wallet scope, amounts, source claims and maximum spend. Record every finalized receipt and child callback; an accepted request or `MAJORITY_AGREE` alone is not sufficient evidence of the intended state transition.
 
 ## Release evidence to save
 

@@ -98,6 +98,24 @@ GitHub Actions run 38858554415 for source commit f50348bb780dca1f718fa51ce7b17d5
 ESLint: NOT CONFIGURED (no frontend ESLint script/config is present)
 ```
 
+## Final repository reconciliation
+
+The release-hardening reconciliation was committed and pushed on `challenge-v2`:
+
+- Initial reconciliation commit: [`0e19c54`](https://github.com/Bibidee/crux/commit/0e19c54a53fd53ce9dc39f9d2d9c1a3f4c583524)
+- CI-stable final commit: [`ef84d75`](https://github.com/Bibidee/crux/commit/ef84d750c17be912f4b409238b6f5244ee4326f5)
+- Exact final GitHub Actions quality run: [`38876891188`](https://github.com/Bibidee/crux/actions/runs/38876891188) — `success`
+- Local V2.2 semantic lints: `7/7` passed with the repaired `v0.2.12` GenVM cache.
+- Local direct GenVM suite: `71 passed`.
+- Local frontend suite: `10 files, 59 tests passed`; typecheck and production build passed.
+- Local Markdown link integrity: `13` Markdown files checked, no missing repository-local links.
+- Deployment entrypoint TypeScript syntax/type check and deployment-safety regressions passed.
+
+The preceding run `38876735497` failed only because a new regression test assumed the ignored `.env.local` file existed
+in CI. The test was corrected to use a deterministic existing path while exercising the same overwrite guard; the
+exact final run above passed all jobs. No contract deployment, wallet transaction, GEN spend, production publication,
+or merge was performed by this reconciliation.
+
 ## Scope limitations and final status
 
 Not executed within the explicitly authorized two-case scope: a material-overturn challenge, a disallowed third-party-source rejection, and an unavailable-source retryable case. No third funded case was opened and no contract was redeployed.

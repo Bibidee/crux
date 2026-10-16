@@ -64,6 +64,10 @@ direct tests, deployment-safety tests, documentation/link checks, and the exact 
 commit. The official network integration test is write-producing and is not run in this no-write reconciliation unless a
 separate explicit authorization is provided.
 
+The completed reconciliation is recorded in [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md): local semantic lints,
+direct tests, frontend tests, typecheck, build, deployment-entrypoint checks, and local link integrity passed; GitHub
+Actions run `38876891188` for commit `ef84d750c17be912f4b409238b6f5244ee4326f5` concluded `success`.
+
 ## Main-branch boundary
 
 `challenge-v2` is prepared for review against `main`. Do not merge `main` in this task. A pull request may be prepared

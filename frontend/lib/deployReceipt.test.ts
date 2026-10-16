@@ -40,7 +40,9 @@ describe("V2 deployment receipt safety", () => {
   });
 
   it("does not replace the existing V1 frontend environment by default", () => {
-    const envPath = fileURLToPath(new URL("../.env.local", import.meta.url));
+    // Use a deterministic existing file because `.env.local` is intentionally ignored
+    // and is absent from clean CI checkouts. The helper's overwrite policy is path-based.
+    const envPath = fileURLToPath(new URL("../../README.md", import.meta.url));
     expect(existsSync(envPath)).toBe(true);
     expect(() => assertFrontendEnvWriteAllowed(envPath, {})).toThrow("already exists");
     expect(() => assertFrontendEnvWriteAllowed(envPath, {

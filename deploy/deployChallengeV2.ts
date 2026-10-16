@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DecodedDeployData, GenLayerClient, TransactionHash } from "genlayer-js/types";
 import { TransactionStatus } from "genlayer-js/types";
+import { assertManifestWriteAllowed, assertNoAmbiguousResume, assertStudionetTarget, deploymentRunMode } from "../scripts/deploymentSafety.js";
 import { getConfiguredRpc, isFinalizedSuccessfulReceipt } from "../scripts/receiptSafety.js";
 
 async function deploy(client: GenLayerClient<any>, file: string, args: unknown[] = [],
@@ -30,16 +31,21 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
 }
 
 export default async function main(client: GenLayerClient<any>) {
-  if (process.env.CRUX_DEPLOY_V2_ONLY !== "1" || process.env.CRUX_DEPLOY_V2_1_ONLY === "1") {
-    console.log("Skipping Challenge V2 deployment. Set CRUX_DEPLOY_V2_ONLY=1 for the isolated V2 deployment workflow.");
+  const runMode = deploymentRunMode(process.env, "v2");
+  if (runMode === "skip") {
+    console.log("Skipping Challenge V2 deployment. Set CRUX_DEPLOY_V2_ONLY=1 and CRUX_DEPLOY_V2_AUTHORIZED=YES for an explicitly approved legacy V2 deployment.");
     return { skipped: true };
   }
-  const chainId = Number((client as any)?.chain?.id);
-  if (chainId !== 61999) throw new Error(`Refusing V2 deployment: expected Studionet 61999, got ${chainId}`);
-  const configuredRpc = getConfiguredRpc(client);
-  if (configuredRpc !== "https://studio.genlayer.com/api") {
-    throw new Error(`Refusing V2 deployment: expected https://studio.genlayer.com/api, got ${configuredRpc || "an unknown RPC endpoint"}`);
+  if (process.env.CRUX_DEPLOY_V2_LEGACY_ACK !== "YES") {
+    throw new Error("Refusing superseded Challenge V2 deployment: set CRUX_DEPLOY_V2_LEGACY_ACK=YES only after explicitly accepting the historical V2 release boundary; use V2.2 for new deployments.");
   }
+  const requestedSourceCommit = process.env.CRUX_DEPLOY_V2_SOURCE_COMMIT;
+  if (!requestedSourceCommit || !/^[0-9a-fA-F]{40}$/.test(requestedSourceCommit)) {
+    throw new Error("Refusing superseded Challenge V2 deployment: CRUX_DEPLOY_V2_SOURCE_COMMIT must be the exact approved 40-character source commit.");
+  }
+  const chainId = Number((client as any)?.chain?.id);
+  const configuredRpc = getConfiguredRpc(client);
+  assertStudionetTarget({ chainId, rpc: configuredRpc }, "Challenge V2");
   console.log("Crux Challenge V2 deployment target: Studionet 61999");
 
   const manifestPath = path.resolve(process.cwd(), "deployments/challenge-v2-studionet.json");
@@ -49,9 +55,14 @@ export default async function main(client: GenLayerClient<any>) {
     { key: "judge", file: "contracts/challenge_closure_judge.py" },
     { key: "challengeAdjudicator", file: "contracts/challenge_adjudicator.py" },
   ] as const;
+  assertManifestWriteAllowed(manifestPath, process.env, "v2");
   const savedManifest = existsSync(manifestPath)
     ? JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, any>
     : undefined;
+  if (savedManifest?.deploymentSourceCommit
+    && savedManifest.deploymentSourceCommit.toLowerCase() !== requestedSourceCommit.toLowerCase()) {
+    throw new Error(`Refusing superseded Challenge V2 deployment: requested source ${requestedSourceCommit} does not match the historical manifest source ${savedManifest.deploymentSourceCommit}.`);
+  }
   let resumeCompletedKeys: string[] = [];
   let resumePendingKey: string | undefined;
   if (savedManifest) {
@@ -63,6 +74,7 @@ export default async function main(client: GenLayerClient<any>) {
       throw new Error(`Refusing to continue from an unrecognized or later V2 deployment stage in ${manifestPath}. Inspect saved receipts before any further write.`);
     }
 
+    assertNoAmbiguousResume(savedManifest.status, pending);
     const submittedIndex = deploymentPlan.findIndex(({ key }) => savedManifest.status === `${key.toUpperCase()}_SUBMITTED`);
     const finalizedIndex = deploymentPlan.findIndex(({ key }) => savedManifest.status === `${key.toUpperCase()}_FINALIZED`);
     if (submittedIndex >= 0) {

@@ -173,41 +173,28 @@ The optional hosted integration smoke writes three contracts to Studionet:
 CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s
 ```
 
-## Deploy to Studionet
+## Studionet deployment boundary
 
-Do **not** use Studio-dev, Studio Next, Bradbury, Asimov or Localnet for the release deployment.
+The V2.2 four-contract deployment is complete and independently verified on Studionet chain `61999` through
+`https://studio.genlayer.com/api`. Do not redeploy it from this repository as part of normal development, testing, or
+documentation work. The exact addresses and setup receipts are in
+[`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json).
 
-```bash
-npm install -g genlayer
-npm install
+The GenLayer CLI auto-discovers every file in `deploy/`; each entrypoint is therefore fail-closed. Ordinary
+`genlayer deploy` execution performs no blockchain write. A legacy V1 deployment requires both
+`CRUX_DEPLOY_V1_ONLY=1` and `CRUX_DEPLOY_V1_AUTHORIZED=YES`; the superseded V2 runner requires its own authorization,
+legacy acknowledgement, and exact source commit. V2.1 and V2.2 have separate version-specific guards. All writers
+reject non-Studionet chain/RPC targets, protect existing manifests and frontend environment files from overwrite, and
+refuse ambiguous transaction resumes.
 
-genlayer network set studionet
-genlayer network info
-# Confirm chain ID 61999 and https://studio.genlayer.com/api before continuing.
-
-genlayer deploy
-```
-
-`deploy/deployCrux.ts` refuses to continue unless the configured client chain is exactly `61999`. The secure bootstrap deploys an unbound Registry, deploys both adjudication contracts bound to that Registry, then performs a one-time Registry component binding. On success it writes:
-
-- `deployments/studionet.json`
-- `frontend/.env.local`
-
-Verify every address before launching the UI:
+The optional hosted integration smoke test is also write-producing and is not a routine test:
 
 ```bash
-genlayer schema <VERIFIER_ADDRESS>
-genlayer schema <JUDGE_ADDRESS>
-genlayer schema <REGISTRY_ADDRESS>
-genlayer call <REGISTRY_ADDRESS> get_stats
+CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s
 ```
 
-If a deployment transaction fails, inspect it before changing code:
-
-```bash
-genlayer receipt <TX_HASH> --stdout --stderr
-genlayer trace <TX_HASH>
-```
+Only run it under a separate explicit authorization after reviewing its deployment scope. Never use Studio-dev, Studio
+Next, Bradbury, Asimov, Localnet, chain `61997`, or a backend signer for the release.
 
 ## Frontend
 

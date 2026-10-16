@@ -76,12 +76,21 @@ The contract’s own receipt status is recorded exactly as `DISPATCHED_UNVERIFIE
 - Wallet C: withdrawal [`0x10fb8f369f8dc7c2789e66e5d3303dd4f4be0a494c7e03d1f94ec03ad596ae3b`](https://explorer-studio.genlayer.com/tx/0x10fb8f369f8dc7c2789e66e5d3303dd4f4be0a494c7e03d1f94ec03ad596ae3b), `0.0001 GEN`; child [`0xe6f4461a8426f41b0d809f6b9bc59dc8b9bb093fa0de02280776ce58619f6be7`](https://explorer-studio.genlayer.com/tx/0xe6f4461a8426f41b0d809f6b9bc59dc8b9bb093fa0de02280776ce58619f6be7)
 - Final per-wallet Registry credits: A `0.001 GEN` sponsor credit; B `0`; C `0`.
 
+## Vercel duplicate-project investigation
+
+The historical failing GitHub status `Vercel – frontend-nx88: failure` belongs to a separate Vercel project,
+`frontend-nx88` (`prj_2ZWZDWWfonrXiX3G8qJ5DcvXzdrC`). Its preview deployments clone `challenge-v2` with a Python
+framework preset and fail with `PYTHON_ENTRYPOINT_NOT_FOUND`; it has no production deployment or production traffic.
+The intended Next.js project is `bibidees-projects/frontend` (`prj_8Ns4MoHN49DbiHFu4lvchgKNzXhV`), rooted at `frontend`,
+and its current check-run context is successful. The duplicate project was not deleted or reconfigured because that
+would be an unrelated external mutation. It remains a disclosed non-production CI artifact.
+
 ## Verification commands and results
 
 ```text
 GENVM_VERSION=v0.2.12 genvm-lint: PASS (all four contracts)
 pytest -p no:cacheprovider tests/direct/ -q: PASS (71 passed)
-npm --prefix frontend test: PASS (10 files, 51 tests)
+npm --prefix frontend test: PASS (10 files, 59 tests)
 npm --prefix frontend run typecheck: PASS
 npm --prefix frontend run build: PASS (Next.js 15.5.7)
 Studionet live integration: PASS for the authorized two-case scope; all writes finalized successfully.

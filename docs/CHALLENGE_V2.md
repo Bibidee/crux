@@ -20,11 +20,11 @@ V1 pays a contributor as soon as a verified fact makes the case decidable. V2 ad
 4. The V2 Evidence Verifier fetches the source and checks six fields: same subject, policy-admissible source, claim support, time scope, material novelty, and non-contradiction.
 5. The V2 Closure Judge applies the original decision rule to the verified evidence graph. A decisive result becomes `PROVISIONAL_CLOSURE`; bounty and winner bond remain locked for the one-hour challenge window.
 6. A different wallet may commit and reveal a bounded challenge against the provisional decision. Up to four pending commitments can coexist, abandoned work is permissionlessly cleaned up, and revealed challenges are reviewed sequentially. The Challenge Adjudicator independently fetches and evaluates source admissibility, claim support, same subject/time scope, contradiction, materiality, and whether the original rule changes outcome.
-7. Rejected or immaterial challenges do not change the provisional result. A successful challenge to the opposite decisive outcome becomes `CHALLENGE_RESOLVED`; a challenge that makes the evidence insufficient reopens the case while preserving the bounty.
+7. Rejected or immaterial challenges do not change the provisional result. A successful challenge verdict is applied to the provisional decision; a challenge that makes the evidence insufficient reopens the case while preserving the bounty.
 8. Permissionless finalization settles bounty and refundable bonds into recipient-bound credits. Users separately withdraw their own credit.
 
 Exact approved parameters and settlement cases are in [`CHALLENGE_V2_SPEC.md`](CHALLENGE_V2_SPEC.md).
-The separate, unexecuted Studionet validation checklist is [`CHALLENGE_V2_LIVE_SMOKE_TEST.md`](CHALLENGE_V2_LIVE_SMOKE_TEST.md); it requires separate approval for funded test writes.
+The historical smoke-test checklist is [`CHALLENGE_V2_LIVE_SMOKE_TEST.md`](CHALLENGE_V2_LIVE_SMOKE_TEST.md). The authorized two-case V2.2 live execution is complete and recorded in [`LIVE_DEMO.md`](LIVE_DEMO.md) and [`REVIEW_EVIDENCE.md`](REVIEW_EVIDENCE.md); no additional funded write is implied by this document.
 
 ## Trust boundaries and contracts
 
@@ -49,7 +49,7 @@ V1 and V2 have distinct registries, child addresses, manifests, and frontend con
 - Challenge attempts are capped at eight per provisional decision. Up to four pending commitments coexist; admission ends at the one-hour deadline, while each admitted commitment retains its full 20-minute reveal timeout. Reveal and review timeouts have bounded recovery paths that cannot shorten the original challenge window.
 - Credit withdrawals require the transaction sender to equal the recipient, clear the credit before the external transfer, and cannot be repeated against the same balance.
 - Commitments bind chain `61999`, the V2 Registry address, case, decision/evidence IDs as applicable, wallet, source, fact, and salt. Salts and unrevealed claims are stored in browser local storage only until reveal; disconnecting or changing wallets does not intentionally erase them.
-- The deployed V2.2 Registry removes the exact challenged item from `accepted_evidence` on either successful overturn, preserves submission/challenge history, and clears stale close pointers when reopening. The adjudicator receives and replays the exact target ID, and the Registry requires its callback to echo that same ID. These protections are source-parity verified on the current deployment; funded lifecycle behavior remains unproven until live testing.
+- The deployed V2.2 Registry removes the exact challenged item from `accepted_evidence` on either successful overturn, preserves submission/challenge history, and clears stale close pointers when reopening. The adjudicator receives and replays the exact target ID, and the Registry requires its callback to echo that same ID. These protections are source-parity verified on the current deployment; the funded live scope covers a baseline refund and an upheld challenge, while material overturn and other optional negative variants remain unexecuted.
 
 ## Threat model and remaining assumptions
 
@@ -66,11 +66,11 @@ V1 and V2 have distinct registries, child addresses, manifests, and frontend con
 | Wallet switching during a pending transaction | Shared EIP-1193 wallet context, accounts/chain event listeners, stale-response generation checks, and a fresh account/chain check before signing. | Wallet providers can change state between the final account read and their own signature UI; users must verify the account/network shown by the wallet. |
 | Lost reveal salt | Browser warns to preserve site data, secrets are kept per commitment, and wallet disconnect does not clear them. | Clearing browser storage or changing browser/device before reveal is unrecoverable by design; do not share the salt before commit finality. |
 
-## Demo guide (prepared for separately authorized V2.2 live testing)
+## Current V2.2 demo guide
 
-Use the current V2.2 Registry only after the exact live-test plan is approved. Use three distinct Studionet wallets per case: sponsor, original contributor, and challenger. Do not reuse the sponsor or provisional winner as challenger. Select legitimate source sets before requesting approval for funded writes.
+Use the production `/challenge` route and the current V2.2 Registry. Use three distinct Studionet wallets per case: sponsor, original contributor, and challenger. Do not reuse the sponsor or provisional winner as challenger. The completed authorized evidence scope and exact receipts are in [`LIVE_DEMO.md`](LIVE_DEMO.md).
 
-1. Confirm the corrected V2 Registry address appears in the V2-only manifest and explorer, and use an isolated preview/local frontend configuration.
+1. Confirm the current V2.2 Registry address appears in the manifest and explorer, then open `https://crux-end.vercel.app/challenge` on Studionet chain `61999`.
 2. Connect wallet A through the injected EIP-1193 provider on Studionet chain `61999`. Create a case with one to three official baseline facts that leave the rule insufficient.
 3. Wait for `OPEN`. From a non-sponsor contributor wallet, enter the first-party source and one exact decisive fact; commit and wait for finality before revealing from the same browser profile.
 4. Show the V2 verifier result and the case entering `PROVISIONAL_CLOSURE`. Point out the one-hour deadline and locked bounty/bond.
@@ -107,11 +107,11 @@ npm run typecheck
 npm run build
 ```
 
-The current local verification passed the four V2.2 semantic lints with `GENVM_VERSION=v0.2.12`, `71` direct GenVM tests, `51` frontend tests, frontend typecheck and the Next.js production build. The direct regressions cover concurrent manual/automatic expiration, active and queued review promotion, exact challenge-window finalization blocking, source-unavailable recovery, same-time expirations, stale callbacks, reopening, target binding, evidence invalidation, protected appeals, withdrawals and beneficiary/accounting outcomes. These local results complement but do not replace live funded evidence. The Studionet integration test was intentionally not run in this audit because it deploys contracts and submits writes; no GEN was spent.
+The recorded local verification passed the four V2.2 semantic lints with `GENVM_VERSION=v0.2.12`, `71` direct GenVM tests, `59` frontend tests, frontend typecheck and the Next.js production build. The direct regressions cover concurrent manual/automatic expiration, active and queued review promotion, exact challenge-window finalization blocking, source-unavailable recovery, same-time expirations, stale callbacks, reopening, target binding, evidence invalidation, protected appeals, withdrawals and beneficiary/accounting outcomes. These local results complement but do not replace live funded evidence. The official Studionet integration test is write-producing and is not part of this no-write reconciliation; no GEN is spent by this task.
 
 ## Deployment runbook — do not execute without separate approval
 
-The GenLayer CLI loads every TypeScript/JavaScript file in the root `deploy/` directory in filename order. The V2 deployment script is intentionally gated by `CRUX_DEPLOY_V2_ONLY=1`; the existing V1 deploy script explicitly skips when that flag is set. The V2 script refuses any client whose chain ID is not `61999` or whose effective RPC is not `https://studio.genlayer.com/api`. It persists transaction hashes and partial progress. Recovery accepts only a deployment's recorded `*_SUBMITTED` or `*_FINALIZED` checkpoint; it verifies each saved receipt, sender, and exact deployed source hash before continuing. Ambiguous `*_DEPLOYING` or configuration-call stages are refused.
+The GenLayer CLI loads every TypeScript/JavaScript file in the root `deploy/` directory in filename order. Every entrypoint now skips ordinary CLI discovery. A V1 write requires `CRUX_DEPLOY_V1_ONLY=1` plus `CRUX_DEPLOY_V1_AUTHORIZED=YES`; the superseded V2 runner additionally requires `CRUX_DEPLOY_V2_AUTHORIZED=YES`, `CRUX_DEPLOY_V2_LEGACY_ACK=YES`, and an exact approved source commit. V2.1 and V2.2 retain their isolated version-specific guards. Every writer refuses a client whose chain ID is not `61999` or whose effective RPC is not `https://studio.genlayer.com/api`, protects existing manifests from overwrite by default, persists transaction hashes before waiting, and refuses ambiguous resume stages.
 
 ### Expected transactions, costs, and rollback
 
@@ -119,15 +119,7 @@ The GenLayer CLI loads every TypeScript/JavaScript file in the root `deploy/` di
 - No fixed GEN total is quoted here: the current supported CLI/SDK path exposes no reliable preflight fee quote for these GenVM executions, and actual consensus/execution charges can vary. The submitter must review the wallet's displayed cost for every write and fund only after separate deployment/demo approval. The number of writes is not a fee estimate.
 - **Isolation/rollback:** V1 addresses, data, environment variables, and production aliases remain untouched. The current production build has the V2 Registry configured. Do not change its environment or publish a new frontend without separate approval. Because the contract is immutable, a corrected V2 implementation needs an approved replacement deployment and a separately approved frontend configuration/publication. V1 variables and contracts must remain unchanged. Deployed contracts and finalized transactions are not reversible; rollback means disabling V2 access in a separately approved change and preserving all manifests/receipts.
 
-After approval, from the repository root and an unlocked CLI:
-
-```powershell
-genlayer network set studionet
-genlayer network info   # confirm chain 61999 and https://studio.genlayer.com/api
-$env:CRUX_DEPLOY_V2_ONLY = "1"
-genlayer deploy         # V2 script runs; V1 deploy script skips
-Remove-Item Env:CRUX_DEPLOY_V2_ONLY
-```
+Historical deployment commands are retained for audit context only and must not be executed for the current release. The current V2.2 deployment is complete and must not be rerun.
 
 If a transaction fails or the command is interrupted, do not blindly rerun deployment. Inspect the saved `deployments/challenge-v2-studionet.json` partial manifest, transaction receipts/traces, and the explorer first; reconcile the exact completed stage before any resumed write. The runner resumes only a validated deployment checkpoint and never repeats a recorded transaction. Each setup write requires `FINALIZED` plus either `FINISHED_WITH_RETURN` or a Studio `AGREE`/`MAJORITY_AGREE` result with successful leader execution, a matching validator majority, and only successful validator executions or nonfatal idle `VALIDATOR_QUORUM_REACHED` receipts. The runner then writes `status: DEPLOYED_PENDING_VERIFICATION` rather than claiming full readiness. Independently verify all four addresses, compare source hashes with the deployed transaction input, check Registry constructor bindings, the finalized `configureTxHash`, every child `registry_address`, and V2 Registry `get_stats` including zero initial escrow and balanced accounting. Only after those readbacks succeed should the manifest status be changed to `READY`; if any check is ambiguous, preserve the pending status and stop.
 

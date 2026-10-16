@@ -1,9 +1,93 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+  assertManifestWriteAllowed,
+  assertNoAmbiguousResume,
+  assertFrontendEnvWriteAllowed,
+  assertStudionetTarget,
+  deploymentRunMode,
+} from "../../scripts/deploymentSafety.js";
 import { getConfiguredRpc, isFinalizedSuccessfulReceipt } from "../../scripts/receiptSafety.js";
 
 describe("V2 deployment receipt safety", () => {
+  it("does not let an ordinary genlayer deploy invocation write any release", () => {
+    expect(deploymentRunMode({}, "v1")).toBe("skip");
+    expect(deploymentRunMode({}, "v2")).toBe("skip");
+    expect(deploymentRunMode({ CRUX_DEPLOY_V2_2_ONLY: "1", CRUX_DEPLOY_V2_2_AUTHORIZED: "YES" }, "v1")).toBe("skip");
+    expect(deploymentRunMode({ CRUX_DEPLOY_V2_2_ONLY: "1", CRUX_DEPLOY_V2_2_AUTHORIZED: "YES" }, "v2")).toBe("skip");
+  });
+
+  it("requires matching version-specific authorization", () => {
+    expect(() => deploymentRunMode({ CRUX_DEPLOY_V1_ONLY: "1" }, "v1")).toThrow("CRUX_DEPLOY_V1_AUTHORIZED=YES");
+    expect(deploymentRunMode({ CRUX_DEPLOY_V1_ONLY: "1", CRUX_DEPLOY_V1_AUTHORIZED: "YES" }, "v1")).toBe("run");
+    expect(() => deploymentRunMode({ CRUX_DEPLOY_V2_ONLY: "1" }, "v2")).toThrow("CRUX_DEPLOY_V2_AUTHORIZED=YES");
+    expect(deploymentRunMode({ CRUX_DEPLOY_V2_ONLY: "1", CRUX_DEPLOY_V2_AUTHORIZED: "YES" }, "v2")).toBe("run");
+  });
+
+  it("refuses a wrong chain or RPC before a release write", () => {
+    expect(() => assertStudionetTarget({ chainId: 61997, rpc: "https://studio.genlayer.com/api" })).toThrow("61999");
+    expect(() => assertStudionetTarget({ chainId: 61999, rpc: "https://wrong.example/api" })).toThrow("studio.genlayer.com/api");
+    expect(() => assertStudionetTarget({ chainId: 61999, rpc: "https://studio.genlayer.com/api" })).not.toThrow();
+  });
+
+  it("does not overwrite a historical manifest by default", () => {
+    const manifestPath = fileURLToPath(new URL("../../deployments/challenge-v2-studionet.json", import.meta.url));
+    expect(() => assertManifestWriteAllowed(manifestPath, {}, "v2")).toThrow("already exists");
+    expect(() => assertManifestWriteAllowed(manifestPath, {
+      CRUX_DEPLOY_V2_ALLOW_MANIFEST_OVERWRITE: "YES",
+    }, "v2")).not.toThrow();
+  });
+
+  it("does not replace the existing V1 frontend environment by default", () => {
+    const envPath = fileURLToPath(new URL("../.env.local", import.meta.url));
+    expect(existsSync(envPath)).toBe(true);
+    expect(() => assertFrontendEnvWriteAllowed(envPath, {})).toThrow("already exists");
+    expect(() => assertFrontendEnvWriteAllowed(envPath, {
+      CRUX_DEPLOY_V1_ALLOW_ENV_WRITE: "YES",
+    })).not.toThrow();
+  });
+
+  it("rejects ambiguous resume stages and accepts only a recorded submitted hash", () => {
+    expect(() => assertNoAmbiguousResume("REGISTRY_DEPLOYING", undefined)).toThrow("ambiguous");
+    expect(() => assertNoAmbiguousResume("REGISTRY_SUBMITTED", undefined)).toThrow("valid submitted transaction hash");
+    expect(() => assertNoAmbiguousResume("REGISTRY_SUBMITTED", {
+      txHash: `0x${"a".repeat(64)}`,
+    })).not.toThrow();
+  });
+
+  it("keeps the legacy V1 and superseded V2 entrypoints explicitly gated", () => {
+    const v1Path = fileURLToPath(new URL("../../deploy/deployCrux.ts", import.meta.url));
+    const v2Path = fileURLToPath(new URL("../../deploy/deployChallengeV2.ts", import.meta.url));
+    const v21Path = fileURLToPath(new URL("../../deploy/deployChallengeV2_1.ts", import.meta.url));
+    const v22Path = fileURLToPath(new URL("../../deploy/deployChallengeV2_2.ts", import.meta.url));
+    expect(readFileSync(v1Path, "utf8")).toContain("CRUX_DEPLOY_V1_AUTHORIZED");
+    expect(readFileSync(v1Path, "utf8")).toContain("assertManifestWriteAllowed");
+    expect(readFileSync(v1Path, "utf8")).toContain("assertFrontendEnvWriteAllowed");
+    expect(readFileSync(fileURLToPath(new URL("../../scripts/deploymentSafety.js", import.meta.url)), "utf8"))
+      .toContain("ALLOW_MANIFEST_OVERWRITE");
+    expect(readFileSync(fileURLToPath(new URL("../../scripts/deploymentSafety.js", import.meta.url)), "utf8"))
+      .toContain("CRUX_DEPLOY_V1_ALLOW_ENV_WRITE");
+    expect(readFileSync(v2Path, "utf8")).toContain("CRUX_DEPLOY_V2_AUTHORIZED");
+    expect(readFileSync(v2Path, "utf8")).toContain("CRUX_DEPLOY_V2_LEGACY_ACK");
+    expect(readFileSync(v2Path, "utf8")).toContain("CRUX_DEPLOY_V2_SOURCE_COMMIT");
+    expect(readFileSync(v21Path, "utf8")).toContain("challengeV2_1RunMode");
+    expect(readFileSync(fileURLToPath(new URL("../../scripts/challengeV2_1Safety.js", import.meta.url)), "utf8"))
+      .toContain("CRUX_DEPLOY_V2_1_AUTHORIZED");
+    expect(readFileSync(v22Path, "utf8")).toContain("CRUX_DEPLOY_V2_2_AUTHORIZED");
+    expect(readFileSync(v22Path, "utf8")).toContain("CRUX_DEPLOY_V2_2_SOURCE_COMMIT");
+  });
+
+  it("keeps historical deployment records readable without activating them", () => {
+    const historical = JSON.parse(readFileSync(
+      fileURLToPath(new URL("../../deployments/challenge-v2-studionet.json", import.meta.url)),
+      "utf8",
+    ));
+    expect(historical.product).toBe("Crux Challenge V2");
+    expect(historical.chainId).toBe(61999);
+    expect(historical.contracts.registry.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+  });
+
   it("keeps helper modules out of GenLayer CLI's auto-executed deploy folder", () => {
     const deployDirectory = fileURLToPath(new URL("../../deploy/", import.meta.url));
     const scripts = readdirSync(deployDirectory)
@@ -26,8 +110,8 @@ describe("V2 deployment receipt safety", () => {
     const v2Path = fileURLToPath(new URL("../../deploy/deployChallengeV2.ts", import.meta.url));
     const v21Path = fileURLToPath(new URL("../../deploy/deployChallengeV2_1.ts", import.meta.url));
     const safetyPath = fileURLToPath(new URL("../../scripts/challengeV2_1Safety.js", import.meta.url));
-    expect(readFileSync(v1Path, "utf8")).toContain("process.env.CRUX_DEPLOY_V2_1_ONLY === \"1\"");
-    expect(readFileSync(v2Path, "utf8")).toContain("process.env.CRUX_DEPLOY_V2_1_ONLY === \"1\"");
+    expect(readFileSync(v1Path, "utf8")).toContain("deploymentRunMode(process.env, \"v1\")");
+    expect(readFileSync(v2Path, "utf8")).toContain("deploymentRunMode(process.env, \"v2\")");
     expect(readFileSync(safetyPath, "utf8")).toContain("CRUX_DEPLOY_V2_1_AUTHORIZED");
     expect(readFileSync(v21Path, "utf8")).toContain("challenge-v2-1-studionet.json");
   });

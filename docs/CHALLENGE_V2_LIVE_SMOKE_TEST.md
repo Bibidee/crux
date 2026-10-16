@@ -1,5 +1,9 @@
 # Crux Challenge V2 — Studionet Live Smoke-Test Plan
 
+> **Historical plan — superseded.** This is the original V2 smoke-test procedure and remains readable for audit
+> traceability. It is not an instruction to redeploy or spend GEN. The current V2.2 deployment and executed live scope
+> are recorded in [`LIVE_DEMO.md`](LIVE_DEMO.md) and [`REVIEW_EVIDENCE.md`](REVIEW_EVIDENCE.md).
+
 **Status: blocked, not executed.** The four V2 contracts exist on Studionet and production is configured to the V2 Registry, but the deployed Registry has a known evidence-reuse defect when an insufficient-evidence challenge reopens a case. The local source/test fix has not been deployed. Do not fund or run either case until a corrected Registry is separately authorized, deployed, and independently verified. This plan does not authorize deployment, production changes, or funded writes.
 
 ## Fixed scope

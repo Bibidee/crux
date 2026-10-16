@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DecodedDeployData, GenLayerClient, TransactionHash } from "genlayer-js/types";
 import { TransactionStatus } from "genlayer-js/types";
+import { assertFrontendEnvWriteAllowed, assertManifestWriteAllowed, assertStudionetTarget, deploymentRunMode } from "../scripts/deploymentSafety.js";
+import { getConfiguredRpc } from "../scripts/receiptSafety.js";
 
 async function deploy(client: GenLayerClient<any>, file: string, args: unknown[] = []) {
   const code = new Uint8Array(readFileSync(path.resolve(process.cwd(), file)));
@@ -25,12 +27,17 @@ async function deploy(client: GenLayerClient<any>, file: string, args: unknown[]
 }
 
 export default async function main(client: GenLayerClient<any>) {
-  if (process.env.CRUX_DEPLOY_V2_ONLY === "1" || process.env.CRUX_DEPLOY_V2_1_ONLY === "1" || process.env.CRUX_DEPLOY_V2_2_ONLY === "1") {
-    console.log("Skipping V1 deployment because an isolated V2 deployment mode is active.");
+  const runMode = deploymentRunMode(process.env, "v1");
+  if (runMode === "skip") {
+    console.log("Skipping V1 deployment. Set CRUX_DEPLOY_V1_ONLY=1 and CRUX_DEPLOY_V1_AUTHORIZED=YES for an explicitly approved V1 deployment.");
     return;
   }
   const chainId = Number((client as any)?.chain?.id);
-  if (chainId !== 61999) throw new Error(`Refusing deployment: Crux is locked to Studionet 61999, client is ${chainId}`);
+  assertStudionetTarget({ chainId, rpc: getConfiguredRpc(client) }, "V1 Crux");
+  const manifestPath = path.resolve(process.cwd(), "deployments/studionet.json");
+  const frontendEnvPath = path.resolve(process.cwd(), "frontend/.env.local");
+  assertManifestWriteAllowed(manifestPath, process.env, "v1");
+  assertFrontendEnvWriteAllowed(frontendEnvPath, process.env);
   console.log("Crux deployment target: Studionet 61999 only");
   // Bootstrap order is intentional: children authenticate one fixed Registry,
   // while Registry binds those child addresses exactly once after deployment.
@@ -74,8 +81,8 @@ export default async function main(client: GenLayerClient<any>) {
     },
   };
   mkdirSync(path.resolve(process.cwd(), "deployments"), { recursive: true });
-  writeFileSync(path.resolve(process.cwd(), "deployments/studionet.json"), JSON.stringify(manifest, null, 2) + "\n");
-  writeFileSync(path.resolve(process.cwd(), "frontend/.env.local"), [
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+  writeFileSync(frontendEnvPath, [
     "NEXT_PUBLIC_GENLAYER_CHAIN_ID=61999",
     "NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api",
     "NEXT_PUBLIC_GENLAYER_EXPLORER=https://explorer-studio.genlayer.com",

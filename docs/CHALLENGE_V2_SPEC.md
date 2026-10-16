@@ -8,12 +8,11 @@ The project owner approved these economic rules on 2026-10-14. The corrected Cha
 BASELINE_PENDING
   -> OPEN                 (baseline independently remains insufficient)
   -> PROVISIONAL_CLOSURE  (decisive evidence is verified)
-  -> FINALIZED            (challenge window passes; permissionless finalize)
-  -> CHALLENGE_REVIEW     (valid challenge is revealed)
-  -> PROVISIONAL_CLOSURE  (rejected/upheld result; wait for finality)
-  -> CHALLENGE_RESOLVED   (successful decisive overturn; permissionless finalize)
-  -> REOPENED             (overturn leaves the original rule insufficient)
-  -> OPEN                 (reopen transition; bounty remains escrowed)
+       ├─ challenge review (admitted challenge is revealed)
+       │    ├─ upheld/rejected → PROVISIONAL_CLOSURE
+       │    └─ decisive overturn → REOPENED → OPEN
+       └─ challenge window + recovery deadlines pass
+            → CLOSED           (permissionless finalize and settlement)
 ```
 
 The provisional bounty and original evidence bond remain locked through challenge and review. A refundable challenge bond is also held in escrow until terminal challenge settlement is finalized (or the case is reopened). Every transition is deadline-checked by the Registry and callbacks are authenticated, unique and idempotent.
@@ -24,7 +23,7 @@ The provisional bounty and original evidence bond remain locked through challeng
 |---|---|
 | Provisional bounty | Remains locked in case escrow until finalization. |
 | Original contributor bond | Remains locked through the challenge window and review. If upheld, it is returned with the winning bounty at finalization; on a decisive overturn, it is refunded to the original contributor at finalization; on reopening, it is refunded when reopening completes. |
-| Challenger bond | Fixed at the case’s contributor-bond amount and displayed before signing. |
+| Challenger bond | Fixed at the case’s contributor-bond amount for each normal attempt. The one protected appeal after the normal cap costs twice that amount and is displayed before signing. |
 | Invalid or unrevealed challenge | Bond is forfeited to the eventual final beneficiary at finalization; it cannot change the provisional result. |
 | Valid but immaterial challenge | Challenger bond remains escrowed while the provisional verdict is challengeable and is credited to the challenger at finalization. |
 | Successful decisive overturn | Original contributor bond is credited back to its contributor; challenger receives the bounty and challenge-bond refund at finalization. |
@@ -37,14 +36,16 @@ The provisional bounty and original evidence bond remain locked through challeng
 - Bounty: `0.001`–`10` GEN; contributor/challenger bond: `max(0.0001 GEN, 1% of bounty)`.
 - Challenge period: one hour for admission; each admitted challenge retains a full 20-minute reveal timeout even when that timeout ends after the admission deadline.
 - Challenge review: 30-minute timeout; recovery after unavailable/timed-out review: 30 minutes.
-- Maximum challenge attempts per provisional decision: eight.
+- Maximum challenge attempts per provisional decision: eight normal attempts plus one protected appeal.
+- Maximum four simultaneous pending challenge commitments per provisional round; settled/expired records remain in the history.
+- Per-round challenge accounting carries forfeited obligations across reopenings and cannot be reset by a new round.
 - Case duration: 30 minutes to 14 days; maximum 40 active evidence submissions and 40 queued adjudications per case.
 
 ## Rationale and authorization boundary
 
 The rules make an invalid challenge costly without introducing a treasury or administrator, preserve the challenger’s bond when a valid counterfact is not outcome-changing, and prevent either side from withdrawing the same bounty. The bounded recovery window prevents an unavailable validator/source from locking escrow forever.
 
-The project owner approved the rules above on 2026-10-14. Their implementation, tests, deployment evidence, and current security limitation are tracked in [`CHALLENGE_V2.md`](CHALLENGE_V2.md) and [`CHALLENGE_V2_RELEASE_EVIDENCE.md`](CHALLENGE_V2_RELEASE_EVIDENCE.md). Approval of the economic rules and original setup deployment does not authorize funded cases, a replacement deployment, production environment changes, or Vercel publication; those remain separate actions requiring explicit approval.
+The project owner approved the rules above on 2026-10-14. Their implementation, tests, deployment evidence, and current scope limitations are tracked in [`CHALLENGE_V2.md`](CHALLENGE_V2.md), [`LIVE_DEMO.md`](LIVE_DEMO.md), and [`REVIEW_EVIDENCE.md`](REVIEW_EVIDENCE.md). The original deployment authorization boundary was later followed by separate explicit authorization for the recorded funded V2.2 evidence flow. This document does not authorize a new deployment, funded write, production environment change, or Vercel publication.
 
 No V1 contract, V1 deployment, production environment variable, production traffic, or Vercel production deployment is changed by this specification.
 

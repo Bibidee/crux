@@ -1,5 +1,10 @@
 # Crux Challenge V2.1 security audit
 
+> **Historical audit — superseded.** Findings and source-level conclusions below are preserved as an audit record for
+> V2.1. They do not describe the active production target. The corrected V2.2 release and its executed scope are
+> documented in [`CHALLENGE_V2_SPEC.md`](CHALLENGE_V2_SPEC.md), [`LIVE_DEMO.md`](LIVE_DEMO.md), and
+> [`REVIEW_EVIDENCE.md`](REVIEW_EVIDENCE.md).
+
 Audit date: 2026-10-16  
 Branch: `challenge-v2`  
 Audit baseline: `651c5cec2c882d6dd3d26623cd81280a12c11830`  

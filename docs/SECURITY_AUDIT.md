@@ -1,5 +1,9 @@
 # Crux security remediation audit
 
+> **Historical audit — superseded.** This record preserves the earlier V1/V2 remediation findings, hashes, and
+> verification notes. It is not the current V2.2 release specification. Use [`CHALLENGE_V2_SPEC.md`](CHALLENGE_V2_SPEC.md),
+> [`LIVE_DEMO.md`](LIVE_DEMO.md), and [`REVIEW_EVIDENCE.md`](REVIEW_EVIDENCE.md) for the active Studionet release.
+
 ## Scope
 
 Start commit: `ff7ece9` (`Polish wallet UX and add live demo`).

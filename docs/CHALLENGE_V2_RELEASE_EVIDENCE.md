@@ -1,5 +1,10 @@
 # Crux Challenge V2 — Release Evidence and Limitations
 
+> **Historical record — superseded.** This document preserves the original Challenge V2 hashes, findings, and receipts.
+> It is not the active production specification or deployment target. Challenge V2.2 is active on Studionet `61999`;
+> see [`CHALLENGE_V2_SPEC.md`](CHALLENGE_V2_SPEC.md), [`LIVE_DEMO.md`](LIVE_DEMO.md), and
+> [`REVIEW_EVIDENCE.md`](REVIEW_EVIDENCE.md).
+
 **Verdict: NOT READY for funded demonstrations.** This record separates what is deployed and read-only verified from what is locally tested or still unproven. No V2 cases, bonds, withdrawals, redeployments, Vercel settings, or production publications were created by this audit.
 
 ## Audited release baseline

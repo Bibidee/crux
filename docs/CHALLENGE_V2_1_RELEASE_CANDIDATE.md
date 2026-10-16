@@ -1,5 +1,10 @@
 # Crux Challenge V2.1 security release
 
+> **Historical candidate — superseded.** This document preserves the V2.1 source identity, findings, hashes, and
+> deployment receipts. V2.1 is not the active production target and must not be redeployed for new cases. Challenge
+> V2.2 is the active four-contract release; see [`CHALLENGE_V2_SPEC.md`](CHALLENGE_V2_SPEC.md) and
+> [`challenge-v2-2-studionet.json`](../deployments/challenge-v2-2-studionet.json).
+
 **Status: contracts deployed and independently verified.** Studionet is the only deployment target (`chainId: 61999`, RPC `https://studio.genlayer.com/api`). The separately authorized V2.1 setup completed with five finalized writes. No funded case, bond, withdrawal, production environment change, or Vercel publication was performed; the existing frontend remains unchanged and is not configured to these V2.1 addresses.
 
 ## Release lineage

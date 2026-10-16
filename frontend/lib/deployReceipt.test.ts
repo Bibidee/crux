@@ -10,7 +10,7 @@ describe("V2 deployment receipt safety", () => {
       .filter((file) => file.endsWith(".ts") || file.endsWith(".js"))
       .sort();
 
-    expect(scripts).toEqual(["deployChallengeV2.ts", "deployChallengeV2_1.ts", "deployCrux.ts"]);
+    expect(scripts).toEqual(["deployChallengeV2.ts", "deployChallengeV2_1.ts", "deployChallengeV2_2.ts", "deployCrux.ts"]);
   });
 
   it("keeps the JavaScript receipt helper available outside the CLI auto-entrypoint directory", () => {

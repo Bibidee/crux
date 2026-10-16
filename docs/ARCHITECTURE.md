@@ -98,4 +98,4 @@ sponsor, while still-timely sealed commitments and revealed queued or pending
 commitments go back to their contributors.
 Every path marks the submission settled and releases active capacity once.
 
-Credits use recipient-bound pull withdrawals so a failed external transfer cannot rewind the semantic state transition. GenLayer external transfers are asynchronous finalized messages; the contract clears credit before emitting them, so the recorded withdrawal is not by itself proof that a rejecting contract recipient received value.
+Credits use recipient-bound pull withdrawals. Each dispatch creates an immutable `DISPATCHED_UNVERIFIED` receipt with no automatic replay; GenLayer external transfers are asynchronous finalized messages, so the receipt is an accounting dispatch record rather than proof that a rejecting contract recipient received value. The supported path is an ordinary EOA recipient followed by explorer/child-message reconciliation.

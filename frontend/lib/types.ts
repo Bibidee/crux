@@ -114,6 +114,8 @@ export type ChallengeCase = CruxCase & {
   pending_challenge?: string;
   challenge_count?: number;
   pending_challenge_count?: number;
+  appeal_bond_atto?: string;
+  can_appeal?: boolean;
   pending_invalid_challenge_penalty_atto?: string;
   pending_final_outcome?: string;
   pending_final_beneficiary?: string;

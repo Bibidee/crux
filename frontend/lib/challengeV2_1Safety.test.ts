@@ -60,18 +60,20 @@ describe("V2.1 deployment safety", () => {
     expect(() => assertChallengeV2_1Manifest(manifest, sourceHashes)).toThrow(/source hash differs/);
   });
 
-  it("keeps the corrected V2.2 source explicitly undeployed", () => {
-    expect(candidate.status).toBe("NOT_DEPLOYED");
+  it("keeps the corrected V2.2 release separate from V2.1", () => {
+    expect(candidate.product).toBe("Crux Challenge V2.2");
     expect(candidate.chainId).toBe(61999);
     expect(candidate.rpc).toBe("https://studio.genlayer.com/api");
     expect(candidate.sourceHashes).toEqual(sourceHashes);
-    expect(candidate.deployment.addresses).toEqual({});
-    expect(candidate.deployment.transactions).toEqual({});
-    expect(candidate.verification).toEqual({
-      deployed: false,
-      liveVerified: false,
-      fundedLifecycleVerified: false,
-      productionPublished: false,
-    });
+    if (candidate.status === "NOT_DEPLOYED") {
+      expect(candidate.contracts).toEqual({});
+      expect(candidate.transactions).toEqual({});
+      expect(candidate.verification.deployed).toBe(false);
+    } else {
+      expect(candidate.status).toBe("READY_CONTRACT_LAYER");
+      expect(Object.keys(candidate.contracts).sort()).toEqual(["challengeAdjudicator", "judge", "registry", "verifier"]);
+      expect(candidate.transactions.configureComponents.txHash).toMatch(/^0x[0-9a-fA-F]{64}$/);
+      expect(candidate.verification.deployed).toBe(true);
+    }
   });
 });

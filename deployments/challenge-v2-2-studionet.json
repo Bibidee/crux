@@ -1,5 +1,5 @@
 {
-  "product": "Crux Challenge V2.2 Candidate",
+  "product": "Crux Challenge V2.2",
   "network": "studionet",
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
@@ -9,10 +9,10 @@
   "supersedes": {
     "product": "Crux Challenge V2.1",
     "registry": "0xA258Ef6f5e2ACB3512c37ACC71544D94Caa7520c",
-    "reason": "Carry forfeited and unrevealed challenge-bond obligations across insufficient-evidence reopenings and later provisional rounds."
+    "reason": "Carry forfeited and unrevealed challenge-bond obligations across insufficient-evidence reopenings, preserve one protected appeal after the normal challenge cap, and record one-shot withdrawal dispatch receipts without automatic replay."
   },
   "sourceHashes": {
-    "registry": "b51e83ad5ce380221e2fd3f46806023e038358cca25e45878dc1055bdae3d1e5",
+    "registry": "335e4a96ace0059dfa93795ad6afc240a5ecf60a3b9db7aef3d408a8bd5e08aa",
     "verifier": "0ee544da7194f404fe7df52fe2abf76b99a45041aa9fde4419e2c24928330c83",
     "judge": "1bbdf6f3e7e4848df9f46b15f5b28535f2cf0466580ee840a2ffe7c9a3e7a0c9",
     "challengeAdjudicator": "d007976f3fb6fed5e78c11e61664255ad5db95438f525fc8843652e44a5bae10"
@@ -23,11 +23,10 @@
     "judge": "contracts/challenge_closure_judge.py",
     "challengeAdjudicator": "contracts/challenge_adjudicator.py"
   },
-  "deployment": {
-    "requiredWrites": 5,
-    "addresses": {},
-    "transactions": {}
-  },
+  "deploymentSourceCommit": "",
+  "deployer": "",
+  "contracts": {},
+  "transactions": {},
   "verification": {
     "deployed": false,
     "liveVerified": false,

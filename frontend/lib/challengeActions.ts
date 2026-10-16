@@ -10,6 +10,7 @@ export type ChallengeActionState = {
   expiredUnrevealedId: string | null;
   expiredReviewId: string | null;
   canReopen: boolean;
+  canAppeal: boolean;
 };
 
 export function isChallengeWriteReady(
@@ -39,9 +40,11 @@ export function getChallengeActionState(
   const pendingCount = caseData.pending_challenge_count || 0;
   const challengeSlots = Math.max(0, 4 - pendingCount);
   const challengeWindowOpen = now > 0 && !deadlineReached(caseData.challenge_deadline, now);
+  const normalBudgetAvailable = (caseData.challenge_count || 0) < 8;
   const canChallenge = ["PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW"].includes(caseData.status)
     && ADMISSIBLE_CHALLENGE_STATUSES.has(caseData.challenge_status || "")
     && challengeSlots > 0
+    && normalBudgetAvailable
     && challengeWindowOpen;
 
   const pending = caseData.pending_challenge
@@ -58,5 +61,6 @@ export function getChallengeActionState(
     expiredUnrevealedId,
     expiredReviewId,
     canReopen: caseData.status === "REOPENED" && caseData.challenge_status === "REOPENED",
+    canAppeal: Boolean(caseData.can_appeal) && challengeWindowOpen && challengeSlots > 0,
   };
 }

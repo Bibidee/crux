@@ -37,6 +37,15 @@ describe("Challenge V2 action availability", () => {
     expect(state.canFinalize).toBe(true);
   });
 
+  it("switches from the exhausted normal budget to one protected appeal", () => {
+    const state = getChallengeActionState(
+      caseState({ challenge_count: 8, can_appeal: true, appeal_bond_atto: "200000000000000" }), [], NOW,
+    );
+    expect(state.canChallenge).toBe(false);
+    expect(state.canAppeal).toBe(true);
+    expect(getChallengeActionState(caseState({ challenge_count: 8 }), [], NOW).canAppeal).toBe(false);
+  });
+
   it("exposes expired unrevealed cleanup and keeps queued work visible", () => {
     const queued = challenge({ id: "ch-queued", status: "REVEALED_QUEUED", reveal_deadline: String(NOW + 1) });
     const state = getChallengeActionState(caseState({ pending_challenge_count: 2 }), [challenge(), queued], NOW);

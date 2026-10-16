@@ -80,13 +80,14 @@ def challenge_commitment(vm, case_id, decision_id, challenged_evidence_id, chall
 
 
 def submit_challenge(vm, registry, case_id, decision_id, challenger, callback_wallet,
-                     challenged_evidence_id=None, salt="22" * 32, expected_status="REVIEW_PENDING"):
+                     challenged_evidence_id=None, salt="22" * 32, expected_status="REVIEW_PENDING",
+                     bond=BOND):
     challenged_evidence_id = challenged_evidence_id or decision_id
     source_url = "https://example.com/counterevidence"
     counterclaim = "The same version's official licence prohibits commercial redistribution."
     digest = challenge_commitment(vm, case_id, decision_id, challenged_evidence_id, challenger,
                                   source_url, counterclaim, salt)
-    vm.sender, vm.value = challenger, BOND
+    vm.sender, vm.value = challenger, bond
     challenge_id = registry.commit_challenge(case_id, decision_id, challenged_evidence_id, digest)
     vm.value = 0
     registry.reveal_challenge(challenge_id, source_url, counterclaim, salt)
@@ -210,10 +211,17 @@ def test_withdrawal_is_recipient_bound_and_one_shot(direct_vm, direct_deploy, di
     direct_vm.sender = direct_charlie
     with pytest.raises(Exception, match="only the credited recipient"):
         registry.withdraw_credit(addr(direct_bob))
+    assert registry.get_latest_withdrawal(addr(direct_bob))["status"] == "NONE"
     direct_vm.sender = direct_bob
     registry.withdraw_credit(addr(direct_bob))
     assert registry.get_credit(addr(direct_bob)) == "0"
     assert registry.get_stats()["withdrawn_atto"] == str(BOUNTY + BOND)
+    receipt = registry.get_latest_withdrawal(addr(direct_bob))
+    assert receipt["status"] == "DISPATCHED_UNVERIFIED"
+    assert receipt["delivery_proven"] is False
+    assert receipt["retry_allowed"] is False
+    assert receipt["amount_atto"] == str(BOUNTY + BOND)
+    assert registry.get_withdrawal_receipt(receipt["id"]) == receipt
     with pytest.raises(Exception, match="no credit available"):
         registry.withdraw_credit(addr(direct_bob))
 
@@ -416,7 +424,7 @@ def test_multiple_reopenings_carry_all_prior_forfeitures_to_terminal_beneficiary
 
 
 def test_eight_rejected_challenges_exhaust_the_bounded_round_budget(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
-    """The bounded permissionless cap is observable and can deny a late challenger."""
+    """Eight normal attempts exhaust the cap, but one protected appeal remains."""
     warp(direct_vm)
     registry = deploy_registry(direct_vm, direct_deploy, direct_alice, direct_charlie)
     case_id, submission_id = create_provisional(direct_vm, registry, direct_alice, direct_bob, direct_charlie)
@@ -435,15 +443,32 @@ def test_eight_rejected_challenges_exhaust_the_bounded_round_budget(direct_vm, d
     assert registry.get_stats()["bond_escrow_atto"] == str(9 * BOND)
 
     honest_challenger = "0x" + ("55" * 20)
-    direct_vm.sender, direct_vm.value = honest_challenger, BOND
-    with pytest.raises(Exception, match="challenge limit reached"):
-        registry.commit_challenge(case_id, submission_id, submission_id, "99" * 32)
+    appeal_digest = challenge_commitment(
+        direct_vm, case_id, submission_id, submission_id, honest_challenger,
+        "https://example.com/counterevidence", "The same version's official licence prohibits commercial redistribution.",
+        "99" * 32,
+    )
+    direct_vm.sender, direct_vm.value = honest_challenger, 2 * BOND
+    appeal_id = registry.commit_challenge(case_id, submission_id, submission_id, appeal_digest)
+    direct_vm.value = 0
+    assert registry.get_case(case_id)["challenge_appeal_used"] is True
+    assert registry.get_case(case_id)["can_appeal"] is False
+    assert registry.get_challenge(appeal_id)["is_protected_appeal"] is True
+    assert registry.get_challenge(appeal_id)["bond_atto"] == str(2 * BOND)
+    registry.reveal_challenge(
+        appeal_id, "https://example.com/counterevidence",
+        "The same version's official licence prohibits commercial redistribution.", "99" * 32,
+    )
+    direct_vm.sender = direct_charlie
+    registry.record_challenge_review(appeal_id, review("CHALLENGE_REJECTED", source_allowed=False))
     direct_vm.value = 0
     assert registry.get_case(case_id)["challenge_count"] == 8
+    assert registry.get_case(case_id)["pending_invalid_challenge_penalty_atto"] == str(10 * BOND)
+    assert registry.get_stats()["bond_escrow_atto"] == str(11 * BOND)
     assert registry.get_stats()["accounting_balanced"] is True
     warp(direct_vm, NOW + 3601)
     registry.finalize_provisional(case_id)
-    assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + BOND + 8 * BOND)
+    assert registry.get_credit(addr(direct_bob)) == str(BOUNTY + BOND + 10 * BOND)
     assert registry.get_stats()["bond_escrow_atto"] == "0"
 
 

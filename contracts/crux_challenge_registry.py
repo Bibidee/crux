@@ -6,7 +6,7 @@ import json
 import re
 from datetime import datetime, timezone
 
-VERSION = "0.2.0-studionet-challenge"
+VERSION = "0.2.1-studionet-challenge"
 NETWORK_ID = "61999"
 MIN_BOUNTY = 10 ** 15
 MAX_BOUNTY = 10 * 10 ** 18
@@ -33,6 +33,10 @@ MAX_CHALLENGES = 8
 # bounded set of live commitments so one abandoned challenger cannot deny the
 # rest of the window, while still bounding storage and evaluator work.
 MAX_PENDING_CHALLENGES = 4
+# Once the normal round budget is exhausted, reserve one bounded protected
+# appeal for a new challenger. The higher bond makes the fallback costly while
+# keeping the total evaluator work finite.
+PROTECTED_APPEAL_BOND_MULTIPLIER = 2
 
 BASELINE_OUTCOMES = ("OUTCOME_A", "OUTCOME_B", "INSUFFICIENT_EVIDENCE")
 VERIFICATION_STATUSES = ("VERIFIED", "SOURCE_UNAVAILABLE", "REJECTED")
@@ -183,6 +187,8 @@ class CruxChallengeRegistry(gl.Contract):
     challenge_ids: DynArray[str]
     challenge_commitment_index: TreeMap[str, str]
     credits: TreeMap[Address, u256]
+    withdrawal_receipts: TreeMap[str, str]
+    latest_withdrawal: TreeMap[Address, str]
     verifier_address: str
     judge_address: str
     challenge_adjudicator_address: str
@@ -191,6 +197,7 @@ class CruxChallengeRegistry(gl.Contract):
     next_case: u256
     next_submission: u256
     next_challenge: u256
+    next_withdrawal: u256
     total_deposited: u256
     case_escrow: u256
     bond_escrow: u256
@@ -216,6 +223,7 @@ class CruxChallengeRegistry(gl.Contract):
         self.next_case = u256(1)
         self.next_submission = u256(1)
         self.next_challenge = u256(1)
+        self.next_withdrawal = u256(1)
         self.total_deposited = u256(0)
         self.case_escrow = u256(0)
         self.bond_escrow = u256(0)
@@ -401,6 +409,7 @@ class CruxChallengeRegistry(gl.Contract):
             "challenge_deadline": "0", "challenge_review_deadline": "0", "challenge_recovery_deadline": "0",
             "challenge_status": "NONE", "challenge_ids": [], "pending_challenge": "", "challenge_count": 0,
             "challenge_round": "", "pending_challenge_ids": [], "challenge_review_queue": [],
+            "challenge_appeal_used": False,
             "winning_challenge": "",
             "pending_invalid_challenge_penalty_atto": "0", "pending_final_outcome": "",
             "pending_final_beneficiary": "", "final_decision_evidence": None,
@@ -686,6 +695,7 @@ class CruxChallengeRegistry(gl.Contract):
             "pending_challenge": "", "pending_challenge_ids": [],
             "challenge_review_queue": [], "challenge_review_deadline": "0",
             "challenge_recovery_deadline": "0",
+            "challenge_appeal_used": False,
             "pending_final_outcome": "", "pending_final_beneficiary": "",
             "final_decision_evidence": {
                 "kind": "PROVISIONAL_CLOSURE", "submission_id": submission_id,
@@ -710,13 +720,15 @@ class CruxChallengeRegistry(gl.Contract):
         # cannot silently shorten the one-hour opportunity.
         if _now() >= int(case["challenge_deadline"]):
             raise gl.vm.UserError("[EXPECTED] challenge window has closed")
-        if int(case.get("challenge_count", 0)) >= MAX_CHALLENGES:
-            raise gl.vm.UserError("[EXPECTED] challenge limit reached")
         self._settle_expired_challenges(case)
         pending_ids = case.get("pending_challenge_ids", [])
         if len(pending_ids) >= MAX_PENDING_CHALLENGES:
             self._save_case(case)
             raise gl.vm.UserError("[EXPECTED] challenge queue is full; expire abandoned work first")
+        challenge_count = int(case.get("challenge_count", 0))
+        protected_appeal = challenge_count >= MAX_CHALLENGES
+        if protected_appeal and case.get("challenge_appeal_used"):
+            raise gl.vm.UserError("[EXPECTED] protected appeal already used")
         if challenged_decision_id != case["provisional_submission"]:
             raise gl.vm.UserError("[EXPECTED] challenge targets a different provisional decision")
         decisive = self._submission(case["provisional_submission"]).get("closure") or {}
@@ -729,8 +741,10 @@ class CruxChallengeRegistry(gl.Contract):
         if challenger.lower() in (case["sponsor"].lower(), case["provisional_winner"].lower()):
             raise gl.vm.UserError("[EXPECTED] sponsor and provisional winner cannot challenge")
         bond = int(gl.message.value)
-        if bond != int(case["bond_atto"]):
-            raise gl.vm.UserError("[EXPECTED] send the exact challenge bond")
+        required_bond = int(case["bond_atto"]) * (PROTECTED_APPEAL_BOND_MULTIPLIER if protected_appeal else 1)
+        if bond != required_bond:
+            label = "protected appeal bond" if protected_appeal else "challenge bond"
+            raise gl.vm.UserError(f"[EXPECTED] send the exact {label}")
         commitment = _hash(commitment)
         if commitment in self.challenge_commitment_index and self.challenge_commitment_index[commitment]:
             raise gl.vm.UserError("[EXPECTED] challenge commitment already used")
@@ -746,11 +760,14 @@ class CruxChallengeRegistry(gl.Contract):
             "committed_at": _iso(), "reveal_deadline": str(_now() + REVEAL_TIMEOUT),
             "stage_deadline": "0", "source_url": "", "counterclaim": "", "revealed_at": "",
             "review": None, "bond_released": False, "bond_forfeited": False, "settled_at": "",
+            "is_protected_appeal": protected_appeal,
         }
         self._save_challenge(challenge)
         self.challenge_ids.append(challenge_id)
         case["challenge_ids"].append(challenge_id)
-        case["challenge_count"] = int(case.get("challenge_count", 0)) + 1
+        case["challenge_count"] = challenge_count + (0 if protected_appeal else 1)
+        if protected_appeal:
+            case["challenge_appeal_used"] = True
         case.setdefault("pending_challenge_ids", []).append(challenge_id)
         self.challenge_commitment_index[commitment] = challenge_id
         self.total_deposited = u256(int(self.total_deposited) + bond)
@@ -1236,7 +1253,31 @@ class CruxChallengeRegistry(gl.Contract):
         self.credits[account] = u256(0)
         self.total_claimable = u256(int(self.total_claimable) - amount)
         self.total_withdrawn = u256(int(self.total_withdrawn) + amount)
+        withdrawal_id = "wd-" + str(int(self.next_withdrawal))
+        self.next_withdrawal = u256(int(self.next_withdrawal) + 1)
+        receipt = {
+            "id": withdrawal_id, "recipient": recipient, "amount_atto": str(amount),
+            "status": "DISPATCHED_UNVERIFIED", "delivery_proven": False,
+            "retry_allowed": False, "requested_at": _iso(),
+            "policy": "EOA_PULL_NO_AUTOMATIC_RETRY",
+        }
+        self.withdrawal_receipts[withdrawal_id] = _json(receipt)
+        self.latest_withdrawal[account] = withdrawal_id
         _Recipient(account).emit_transfer(value=amount)
+
+    @gl.public.view
+    def get_withdrawal_receipt(self, withdrawal_id: str) -> dict:
+        if withdrawal_id not in self.withdrawal_receipts:
+            raise gl.vm.UserError("[EXPECTED] withdrawal receipt not found")
+        return json.loads(self.withdrawal_receipts[withdrawal_id])
+
+    @gl.public.view
+    def get_latest_withdrawal(self, recipient: str) -> dict:
+        account = Address(_address(recipient, "withdrawal recipient"))
+        withdrawal_id = self.latest_withdrawal[account] if account in self.latest_withdrawal else ""
+        if not withdrawal_id:
+            return {"id": "", "status": "NONE", "recipient": str(account), "amount_atto": "0"}
+        return json.loads(self.withdrawal_receipts[withdrawal_id])
 
     @gl.public.view
     def get_case(self, case_id: str) -> dict:
@@ -1246,6 +1287,18 @@ class CruxChallengeRegistry(gl.Contract):
         case["pending_challenge_count"] = sum(
             1 for challenge_id in case.get("pending_challenge_ids", [])
             if self._challenge(challenge_id)["status"] in ("COMMITTED", "REVEALED_QUEUED", "REVIEW_PENDING")
+        )
+        case["appeal_bond_atto"] = str(int(case.get("bond_atto", "0")) * PROTECTED_APPEAL_BOND_MULTIPLIER)
+        case["can_appeal"] = (
+            case["status"] in ("PROVISIONAL_CLOSURE", "CHALLENGE_REVIEW")
+            and case.get("challenge_status") in (
+                "OPEN", "REVIEW_PENDING", "REJECTED", "VERDICT_UPHELD", "UNREVEALED", "REVIEW_TIMEOUT_RECOVERY"
+            )
+            and case.get("challenge_round") == case.get("provisional_submission")
+            and _now() < int(case.get("challenge_deadline", "0"))
+            and int(case.get("challenge_count", 0)) >= MAX_CHALLENGES
+            and not case.get("challenge_appeal_used")
+            and case["pending_challenge_count"] < MAX_PENDING_CHALLENGES
         )
         case["can_finalize"] = (
             (case["status"] == "CHALLENGE_RESOLVED"
@@ -1356,4 +1409,5 @@ class CruxChallengeRegistry(gl.Contract):
             "case_escrow_atto": str(int(self.case_escrow)), "bond_escrow_atto": str(int(self.bond_escrow)),
             "claimable_atto": str(int(self.total_claimable)),
             "withdrawn_atto": str(int(self.total_withdrawn)), "accounting_balanced": self._accounting_ok(),
+            "withdrawal_receipts": str(int(self.next_withdrawal) - 1),
         }

@@ -218,11 +218,14 @@ export default function ChallengeV2Page() {
       const item: PendingItem = { caseId: caseData.id, kind, commitment, sourceUrl, claim, salt, recordId: "", wallet: submittedWallet };
       const all = [...readPending().filter((old) => old.commitment !== commitment), item];
       savePending(all);
+      const challengeBond = kind === "challenge" && caseData.can_appeal && (caseData.challenge_count || 0) >= 8
+        ? BigInt(caseData.appeal_bond_atto || String(BigInt(caseData.bond_atto) * 2n))
+        : BigInt(caseData.bond_atto);
       const record = kind === "evidence"
         ? await runWrite("Evidence commitment", "commit_evidence", [caseData.id, commitment], BigInt(caseData.bond_atto))
         : await runWrite("Challenge commitment", "commit_challenge",
             [caseData.id, provisionalSubmission, challengedEvidence || provisionalSubmission, commitment],
-            BigInt(caseData.bond_atto));
+            challengeBond);
       const recordId = kind === "evidence"
         ? await readChallengeRegistry<string>("get_submission_for_commitment", [commitment], true)
         : await readChallengeRegistry<string>("get_challenge_for_commitment", [commitment], true);
@@ -386,6 +389,14 @@ export default function ChallengeV2Page() {
             <div className="eyebrow">Challenge cleanup</div><h3>Reveal deadline passed</h3>
             <p>Clean up the abandoned commitment so finalization can become eligible.</p>
             <button className="secondary-button" disabled={!chainReady || !!busy} onClick={() => void act("Expire abandoned challenge", "expire_challenge", [expiredUnrevealedId])}>Expire abandoned challenge</button>
+          </> : actionState?.canAppeal ? <>
+            <div className="eyebrow">Protected challenge slot</div><h3>Challenge the conclusion after the normal cap</h3>
+            <p>The normal attempt budget is full. One bounded protected appeal remains for a new challenger at twice the normal bond.</p>
+            <small>Protected appeal bond: {formatGen(caseData.appeal_bond_atto || String(BigInt(caseData.bond_atto) * 2n))} GEN</small>
+            <Field label="Challenged evidence ID"><input value={challengedEvidence} onChange={(e) => setChallengedEvidence(e.target.value)} /></Field>
+            <Field label="Counterevidence source URL"><input type="url" placeholder="https://" value={challengeUrl} onChange={(e) => setChallengeUrl(e.target.value)} /></Field>
+            <Field label="Exact counterclaim"><textarea value={counterclaim} onChange={(e) => setCounterclaim(e.target.value)} /></Field>
+            <button className="primary-button" disabled={!chainReady || !!busy || !caseData.provisional_submission} onClick={() => void commitPacket("challenge")}>Commit protected appeal · {formatGen(caseData.appeal_bond_atto || String(BigInt(caseData.bond_atto) * 2n))} GEN</button>
           </> : actionState?.canChallenge ? <>
             <div className="eyebrow">Challenge the provisional conclusion</div><h3>Submit source-backed counterevidence</h3>
             <p>Challenge the same subject, version, and time scope. The source must materially contradict the evidence behind this outcome.</p>

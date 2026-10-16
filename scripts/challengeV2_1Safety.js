@@ -17,6 +17,7 @@ export function canonicalSourceSha256(contents) {
 }
 
 export function challengeV2_1RunMode(env) {
+  if (env.CRUX_DEPLOY_V2_2_ONLY === "1") return "skip";
   if (env.CRUX_DEPLOY_V2_1_ONLY !== "1") return "skip";
   if (env.CRUX_DEPLOY_V2_1_AUTHORIZED !== "YES") {
     throw new Error("V2.1 deployment is gated: require explicit CRUX_DEPLOY_V2_1_AUTHORIZED=YES after user approval.");

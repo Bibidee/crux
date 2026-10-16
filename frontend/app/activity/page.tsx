@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
@@ -11,31 +11,47 @@ import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
 import { loadPendingReveals, removePendingReveal, savePendingReveal } from "@/lib/commitment";
 import type { PendingReveal, Submission } from "@/lib/types";
 import { TransactionNotice } from "@/components/TransactionNotice";
+import { errorMessage } from "@/lib/errors";
 
 export default function ActivityPage() {
   const wallet = useInjectedWallet();
   const [credit, setCredit] = useState("0");
-  const [pending, setPending] = useState<PendingReveal[]>([]);
+  const [pending, setPending] = useState<PendingReveal[]>(loadPendingReveals);
   const [mine, setMine] = useState<Submission[]>([]);
   const [busy, setBusy] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [phase, setPhase] = useState("");
+  const refreshSequence = useRef(0);
 
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
+    const address = wallet.address;
+    await Promise.resolve();
+    if (sequence !== refreshSequence.current) return;
     setPending(loadPendingReveals());
-    if (!wallet.address) { setMine([]); setCredit("0"); return; }
+    if (!address) { setMine([]); setCredit("0"); setLoading(false); setError(""); return; }
     setLoading(true);
     setError("");
     try {
-      const [balance, cases] = await Promise.all([getCredit(wallet.address, true), listCases(0, 24)]);
+      const [balance, cases] = await Promise.all([getCredit(address, true), listCases(0, 24)]);
+      if (sequence !== refreshSequence.current) return;
       setCredit(balance);
       const groups = await Promise.all(cases.items.map((c) => listSubmissions(c.id, true).catch(() => [])));
-      setMine(groups.flat().filter((s) => s.contributor?.toLowerCase() === wallet.address?.toLowerCase()).reverse());
-    } catch (e: any) { setError(e?.message || "Could not read wallet activity"); } finally { setLoading(false); }
+      if (sequence !== refreshSequence.current) return;
+      setMine(groups.flat().filter((s) => s.contributor?.toLowerCase() === address.toLowerCase()).reverse());
+    } catch (error: unknown) {
+      if (sequence === refreshSequence.current) setError(errorMessage(error, "Could not read wallet activity"));
+    } finally {
+      if (sequence === refreshSequence.current) setLoading(false);
+    }
   }, [wallet.address]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(() => { if (active) return refresh(); });
+    return () => { active = false; refreshSequence.current += 1; };
+  }, [refresh]);
 
   async function ensureWallet(): Promise<string> {
     const address = wallet.address || await wallet.connect();
@@ -48,9 +64,12 @@ export default function ActivityPage() {
     setBusy("withdraw");
     try {
       const address = await ensureWallet();
-      const hash = await submitRegistryWrite(address, { functionName: "withdraw_credit", args: [address] });
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the transaction before submitting again");
+      const hash = await submitRegistryWrite(address, { functionName: "withdraw_credit", args: [address] },
+        () => wallet.isCurrent(address, walletRevision));
       setPhase("Withdrawal submitted — waiting for finality…"); toast.message("Withdrawal submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash); await refresh(); setPhase("Withdrawal finalized."); toast.success("Credit withdrawal accepted");
-    } catch (e: any) { setPhase(e?.message || "Withdrawal failed"); toast.error(e?.message || "Withdrawal failed"); }
+    } catch (error: unknown) { const message = errorMessage(error, "Withdrawal failed"); setPhase(message); toast.error(message); }
     finally { setBusy(""); }
   }
 
@@ -61,7 +80,10 @@ export default function ActivityPage() {
       let submissionId = await getSubmissionForCommitment(item.commitment, false);
       if (!submissionId) submissionId = await getSubmissionForCommitment(item.commitment, true);
       if (!submissionId) throw new Error("Commitment is not visible yet. Wait for finality and try again.");
-      const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, item.evidenceUrl, item.claimedFact, item.salt] });
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the transaction before submitting again");
+      const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, item.evidenceUrl, item.claimedFact, item.salt] },
+        () => wallet.isCurrent(address, walletRevision));
       savePendingReveal({ ...item, revealTxHash: hash, revealState: "SUBMITTED" });
       setPhase("Reveal submitted — waiting for verifier consensus…"); toast.message("Reveal submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash);
       const finalized = await getSubmission(submissionId, true);
@@ -69,7 +91,7 @@ export default function ActivityPage() {
       if (["REVEAL_QUEUED", "VERIFICATION_PENDING", "CLOSURE_PENDING", "VERIFIED_NON_CLOSING", "CLOSED_WINNER", "REJECTED", "RETRYABLE_SOURCE", "INCONCLUSIVE", "PROTOCOL_BLOCKED", "STALE", "UNREVEALED"].includes(finalized.status)) {
         removePendingReveal(item.commitment); await refresh(); setPhase(`Evidence finalized: ${finalized.status}.`);
       } else throw new Error("Reveal finality could not be confirmed; the saved salt was retained.");
-    } catch (e: any) { setPhase(e?.message || "Reveal failed; saved salt retained"); toast.error(e?.message || "Reveal failed; saved salt retained"); }
+    } catch (error: unknown) { const message = errorMessage(error, "Reveal failed; saved salt retained"); setPhase(message); toast.error(message); }
     finally { setBusy(""); }
   }
 

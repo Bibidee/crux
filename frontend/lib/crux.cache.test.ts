@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serializeReadCacheKey } from "./crux";
+import { serializeReadCacheKey } from "./cache-key";
 
 describe("RPC read cache keys", () => {
   it("serializes BigInt pagination without precision loss", () => {

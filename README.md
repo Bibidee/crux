@@ -11,11 +11,18 @@ This repository is locked to **GenLayer Studionet**:
 - explorer: `https://explorer-studio.genlayer.com`
 - browser wallet: injected **EIP-1193 only** (`window.ethereum`), no Snaps
 
+### Challenge V2 deployment status
+
+Crux V1 remains the existing live three-contract product. The current Challenge V2.2 four-contract set is deployed and independently verified on Studionet, and the `/challenge` route on `crux-end.vercel.app` is configured to its Registry. Older V2 and V2.1 addresses are historical and must not be used for new cases. The authorized funded three-wallet scope has now been executed and is tracked with exact receipts in [`docs/LIVE_DEMO.md`](docs/LIVE_DEMO.md) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md); the material-overturn and optional negative variants remain explicitly disclosed as unexecuted.
+
+The V2.1/V2.2 hardening adds four bounded pending slots, permissionless expiry, admission through the one-hour deadline, a full post-commit reveal timeout, centralized concurrent-review reconciliation, recovery deadlines that cannot shorten finality, per-round challenge accounting, exact target-bound adjudication, protected appeal capacity, recipient-bound withdrawal receipts and one-shot state-changing wallet writes. The V2.2 contracts are deployed and independently verified on Studionet; the production `/challenge` route is wired to them while V1 remains unchanged.
+
 ## Live product
 
 - Website: [crux-end.vercel.app](https://crux-end.vercel.app)
 - Network: GenLayer Studionet (`61999`)
-- Registry: [`0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235`](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235)
+- V1 Registry: [`0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235`](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235)
+- Challenge V2.2 Registry: [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E)
 
 ### Quick demo path
 
@@ -37,6 +44,12 @@ Crux deliberately separates three responsibilities.
 3. `ClosureJudge` receives only verified facts and applies the precommitted rule. A true fact can still be `VERIFIED_NON_CLOSING`; it joins the evidence graph for a later contributor.
 
 This avoids collapsing two different questions into one LLM call: **is the fact established?** and **does the fact resolve the case?**
+
+## Challenge V2.2 (deployed and production-wired)
+
+Challenge V2.2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the current deployment record is [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json).
+
+The V2.2 setup receipts, independent readback, and funded live receipts are recorded in [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json), [`deployments/studionet.json`](deployments/studionet.json), and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md). The completed scope includes a baseline-already-decidable refund path and a complete upheld-challenge lifecycle. The historical V2 and V2.1 deployments remain documented for audit traceability but are not the production target.
 
 ## Main flow
 
@@ -83,6 +96,10 @@ contracts/
   crux_registry.py
   evidence_verifier.py
   closure_judge.py
+  crux_challenge_registry.py          # isolated Challenge V2
+  challenge_evidence_verifier.py      # isolated Challenge V2
+  challenge_closure_judge.py          # isolated Challenge V2
+  challenge_adjudicator.py            # isolated Challenge V2
 frontend/
   app/                    # Next.js multi-page app
   components/
@@ -92,8 +109,13 @@ tests/
   integration/            # opt-in Studionet deployment smoke test
 deploy/
   deployCrux.ts            # deploys verifier → judge → registry
+  deployChallengeV2.ts     # separate, chain-61999-guarded V2 deployment runner
+deployments/
+  challenge-v2-studionet.json  # four V2 addresses and five setup receipts
 docs/
   ARCHITECTURE.md
+  CHALLENGE_V2.md
+  CHALLENGE_V2_SPEC.md
   SECURITY.md
   LIVE_DEMO.md
   REVIEW_EVIDENCE.md
@@ -128,6 +150,10 @@ pip install -r requirements.txt
 genvm-lint check contracts/crux_registry.py --json
 genvm-lint check contracts/evidence_verifier.py --json
 genvm-lint check contracts/closure_judge.py --json
+genvm-lint check contracts/crux_challenge_registry.py --json
+genvm-lint check contracts/challenge_evidence_verifier.py --json
+genvm-lint check contracts/challenge_closure_judge.py --json
+genvm-lint check contracts/challenge_adjudicator.py --json
 
 pytest tests/direct/ -v
 ```
@@ -147,41 +173,28 @@ The optional hosted integration smoke writes three contracts to Studionet:
 CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s
 ```
 
-## Deploy to Studionet
+## Studionet deployment boundary
 
-Do **not** use Studio-dev, Studio Next, Bradbury, Asimov or Localnet for the release deployment.
+The V2.2 four-contract deployment is complete and independently verified on Studionet chain `61999` through
+`https://studio.genlayer.com/api`. Do not redeploy it from this repository as part of normal development, testing, or
+documentation work. The exact addresses and setup receipts are in
+[`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json).
 
-```bash
-npm install -g genlayer
-npm install
+The GenLayer CLI auto-discovers every file in `deploy/`; each entrypoint is therefore fail-closed. Ordinary
+`genlayer deploy` execution performs no blockchain write. A legacy V1 deployment requires both
+`CRUX_DEPLOY_V1_ONLY=1` and `CRUX_DEPLOY_V1_AUTHORIZED=YES`; the superseded V2 runner requires its own authorization,
+legacy acknowledgement, and exact source commit. V2.1 and V2.2 have separate version-specific guards. All writers
+reject non-Studionet chain/RPC targets, protect existing manifests and frontend environment files from overwrite, and
+refuse ambiguous transaction resumes.
 
-genlayer network set studionet
-genlayer network info
-# Confirm chain ID 61999 and https://studio.genlayer.com/api before continuing.
-
-genlayer deploy
-```
-
-`deploy/deployCrux.ts` refuses to continue unless the configured client chain is exactly `61999`. The secure bootstrap deploys an unbound Registry, deploys both adjudication contracts bound to that Registry, then performs a one-time Registry component binding. On success it writes:
-
-- `deployments/studionet.json`
-- `frontend/.env.local`
-
-Verify every address before launching the UI:
+The optional hosted integration smoke test is also write-producing and is not a routine test:
 
 ```bash
-genlayer schema <VERIFIER_ADDRESS>
-genlayer schema <JUDGE_ADDRESS>
-genlayer schema <REGISTRY_ADDRESS>
-genlayer call <REGISTRY_ADDRESS> get_stats
+CRUX_RUN_STUDIONET_INTEGRATION=1 gltest tests/integration/ -v -s
 ```
 
-If a deployment transaction fails, inspect it before changing code:
-
-```bash
-genlayer receipt <TX_HASH> --stdout --stderr
-genlayer trace <TX_HASH>
-```
+Only run it under a separate explicit authorization after reviewing its deployment scope. Never use Studio-dev, Studio
+Next, Bradbury, Asimov, Localnet, chain `61997`, or a backend signer for the release.
 
 ## Frontend
 
@@ -210,7 +223,7 @@ The browser generates a 32-byte salt and stores the pending reveal in local stor
 
 GenVM web rendering can follow redirects while the currently exposed API does not provide a redirect-chain proof to the contract. Crux therefore treats the submitted URL and source policy as part of validator judgment and records the requested URL, not a cryptographically proven final redirect target. For high-value deployments, prefer stable first-party URLs and source policies that identify acceptable hosts explicitly. Do not claim redirect-chain verification unless the GenVM API adds it and the contract is updated to use it.
 
-## Release status
+## V1 release status
 
 The current remediated Studionet deployment and complete two-wallet evidence flow passed on chain `61999`; the live frontend is [https://crux-end.vercel.app](https://crux-end.vercel.app). Current addresses, transaction evidence and the historical previous-registry flow are recorded in [`deployments/studionet.json`](deployments/studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md).
 

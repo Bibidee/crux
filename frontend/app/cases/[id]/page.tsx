@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { getCase, getSubmission, getSubmissionForCommitment, listSubmissions, RE
 import { EXPLORER_URL, useInjectedWallet } from "@/lib/wallet";
 import { absoluteDate, formatGen, outcomeLabel, shortAddress, timeLeft } from "@/lib/format";
 import { loadPendingReveals, makeCommitment, randomSalt, removePendingReveal, savePendingReveal } from "@/lib/commitment";
+import { errorMessage } from "@/lib/errors";
 import type { CruxCase, PendingReveal, Submission } from "@/lib/types";
 
 export default function CaseDetailPage() {
@@ -22,17 +23,26 @@ export default function CaseDetailPage() {
   const [pending, setPending] = useState<PendingReveal | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const refreshSequence = useRef(0);
 
   const refresh = useCallback(async (latest = false) => {
+    const sequence = ++refreshSequence.current;
     try {
       const [c, s] = await Promise.all([getCase(id, latest), listSubmissions(id, latest)]);
+      if (sequence !== refreshSequence.current) return;
       setItem(c); setSubmissions([...s].reverse()); setError("");
       const local = loadPendingReveals().find((x) => x.caseId === id);
       setPending(local || null);
-    } catch (e: any) { setError(e?.message || "Could not read this case"); }
+    } catch (error: unknown) {
+      if (sequence === refreshSequence.current) setError(errorMessage(error, "Could not read this case"));
+    }
   }, [id]);
 
-  useEffect(() => { refresh(false); }, [refresh]);
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(() => { if (active) return refresh(false); });
+    return () => { active = false; refreshSequence.current += 1; };
+  }, [refresh]);
 
   const mine = useMemo(() => submissions.filter((x) => x.contributor?.toLowerCase() === wallet.address?.toLowerCase()), [submissions, wallet.address]);
   const sponsor = !!item && !!wallet.address && item.sponsor.toLowerCase() === wallet.address.toLowerCase();
@@ -56,15 +66,18 @@ export default function CaseDetailPage() {
       commitment = await makeCommitment({ registry: REGISTRY_ADDRESS, caseId: item.id, contributor: address, evidenceUrl: url.trim(), claimedFact: fact.trim(), salt });
       const local: PendingReveal = { caseId: item.id, commitment, evidenceUrl: url.trim(), claimedFact: fact.trim(), salt, createdAt: new Date().toISOString(), commitState: "READY" };
       savePendingReveal(local); setPending(local);
-      const hash = await submitRegistryWrite(address, { functionName: "commit_evidence", args: [item.id, commitment], value: BigInt(item.bond_atto) });
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the transaction before submitting again");
+      const hash = await submitRegistryWrite(address, { functionName: "commit_evidence", args: [item.id, commitment], value: BigInt(item.bond_atto) },
+        () => wallet.isCurrent(address, walletRevision));
       savePendingReveal({ ...local, commitTxHash: hash, commitState: "SUBMITTED" }); setPending({ ...local, commitTxHash: hash, commitState: "SUBMITTED" });
       toast.message("Evidence committed", { description: "Waiting for the commitment to settle before reveal.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForFinalization(hash);
       savePendingReveal({ ...local, commitTxHash: hash, commitState: "FINALIZED" }); setPending({ ...local, commitTxHash: hash, commitState: "FINALIZED" });
       await refresh(false);
       toast.success("Commitment finalised", { description: "Reveal with the second signature to start verification." });
-    } catch (e: any) {
-      toast.error(e?.message || "Commit did not finalize. The sealed evidence remains saved so you can reconcile or retry safely.");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Commit did not finalize. The sealed evidence remains saved so you can reconcile or retry safely."));
     } finally { setBusy(""); }
   }
 
@@ -76,7 +89,10 @@ export default function CaseDetailPage() {
       let submissionId = await getSubmissionForCommitment(pending.commitment, false);
       if (!submissionId) submissionId = await getSubmissionForCommitment(pending.commitment, true);
       if (!submissionId) throw new Error("Commitment is not final yet. Try reveal again in a moment.");
-      const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, pending.evidenceUrl, pending.claimedFact, pending.salt] });
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the transaction before submitting again");
+      const hash = await submitRegistryWrite(address, { functionName: "reveal_evidence", args: [submissionId, pending.evidenceUrl, pending.claimedFact, pending.salt] },
+        () => wallet.isCurrent(address, walletRevision));
       savePendingReveal({ ...pending, revealTxHash: hash, revealState: "SUBMITTED" }); setPending({ ...pending, revealTxHash: hash, revealState: "SUBMITTED" });
       toast.message("Evidence revealed", { description: "GenLayer will now fetch the source and verify the claim.", action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } });
       await waitForDecision(hash);
@@ -86,7 +102,7 @@ export default function CaseDetailPage() {
         removePendingReveal(pending.commitment); setPending(null); setUrl(""); setFact("");
       } else throw new Error("Reveal finality could not be confirmed; the saved salt was retained.");
       await refresh(true);
-    } catch (e: any) { toast.error(e?.message || "Reveal failed"); }
+    } catch (error: unknown) { toast.error(errorMessage(error, "Reveal failed")); }
     finally { setBusy(""); }
   }
 
@@ -94,9 +110,12 @@ export default function CaseDetailPage() {
     setBusy("retry");
     try {
       const address = await ensureWallet();
-      const hash = await submitRegistryWrite(address, { functionName: "retry_baseline", args: [id] });
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the transaction before submitting again");
+      const hash = await submitRegistryWrite(address, { functionName: "retry_baseline", args: [id] },
+        () => wallet.isCurrent(address, walletRevision));
       toast.message("Baseline retry submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash); await refresh(true);
-    } catch (e: any) { toast.error(e?.message || "Retry failed"); }
+    } catch (error: unknown) { toast.error(errorMessage(error, "Retry failed")); }
     finally { setBusy(""); }
   }
 
@@ -104,9 +123,12 @@ export default function CaseDetailPage() {
     setBusy("expire");
     try {
       const address = await ensureWallet();
-      const hash = await submitRegistryWrite(address, { functionName: "expire_case", args: [id] });
+      const walletRevision = wallet.getRevision();
+      if (!wallet.isCurrent(address, walletRevision)) throw new Error("Wallet changed; review the transaction before submitting again");
+      const hash = await submitRegistryWrite(address, { functionName: "expire_case", args: [id] },
+        () => wallet.isCurrent(address, walletRevision));
       toast.message("Expiry submitted", { action: { label: "Explorer", onClick: () => window.open(`${EXPLORER_URL}/tx/${hash}`, "_blank") } }); await waitForDecision(hash); await refresh(true);
-    } catch (e: any) { toast.error(e?.message || "Expiry failed"); }
+    } catch (error: unknown) { toast.error(errorMessage(error, "Expiry failed")); }
     finally { setBusy(""); }
   }
 

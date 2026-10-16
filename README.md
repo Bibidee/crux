@@ -13,7 +13,7 @@ This repository is locked to **GenLayer Studionet**:
 
 ### Challenge V2 deployment status
 
-Crux V1 remains the existing live three-contract product. The current Challenge V2.2 four-contract set is deployed and independently verified on Studionet, and the `/challenge` route on `crux-end.vercel.app` is configured to its Registry. Older V2 and V2.1 addresses are historical and must not be used for new cases. The contract-layer verification is complete; the funded three-wallet V2.2 lifecycle is still pending and is tracked explicitly in [`docs/LIVE_DEMO.md`](docs/LIVE_DEMO.md) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md).
+Crux V1 remains the existing live three-contract product. The current Challenge V2.2 four-contract set is deployed and independently verified on Studionet, and the `/challenge` route on `crux-end.vercel.app` is configured to its Registry. Older V2 and V2.1 addresses are historical and must not be used for new cases. The authorized funded three-wallet scope has now been executed and is tracked with exact receipts in [`docs/LIVE_DEMO.md`](docs/LIVE_DEMO.md) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md); the material-overturn and optional negative variants remain explicitly disclosed as unexecuted.
 
 The V2.1/V2.2 hardening adds four bounded pending slots, permissionless expiry, admission through the one-hour deadline, a full post-commit reveal timeout, centralized concurrent-review reconciliation, recovery deadlines that cannot shorten finality, per-round challenge accounting, exact target-bound adjudication, protected appeal capacity, recipient-bound withdrawal receipts and one-shot state-changing wallet writes. The V2.2 contracts are deployed and independently verified on Studionet; the production `/challenge` route is wired to them while V1 remains unchanged.
 
@@ -21,7 +21,8 @@ The V2.1/V2.2 hardening adds four bounded pending slots, permissionless expiry, 
 
 - Website: [crux-end.vercel.app](https://crux-end.vercel.app)
 - Network: GenLayer Studionet (`61999`)
-- Registry: [`0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235`](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235)
+- V1 Registry: [`0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235`](https://explorer-studio.genlayer.com/address/0x3778BCa6F35D4D9f5b180eCf44aD5654bAE2A235)
+- Challenge V2.2 Registry: [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E)
 
 ### Quick demo path
 
@@ -48,7 +49,7 @@ This avoids collapsing two different questions into one LLM call: **is the fact 
 
 Challenge V2.2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the current deployment record is [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json).
 
-The V2.2 setup receipts and independent readback are recorded in [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md). The Registry currently has no cases or funds, so the funded three-wallet lifecycle remains an explicit next verification step rather than an implied result. The historical V2 and V2.1 deployments remain documented for audit traceability but are not the production target.
+The V2.2 setup receipts, independent readback, and funded live receipts are recorded in [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json), [`deployments/studionet.json`](deployments/studionet.json), and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md). The completed scope includes a baseline-already-decidable refund path and a complete upheld-challenge lifecycle. The historical V2 and V2.1 deployments remain documented for audit traceability but are not the production target.
 
 ## Main flow
 

@@ -54,5 +54,76 @@
       "revealTx": "0x3722a87e5b53573f16b6ea317184edfa320667e96afc4406a86f31fd5b43fd69",
       "result": "REJECTED_INVALID_SALT"
     }
+  },
+  "currentV22": {
+    "deployment": "current-challenge-v2.2-registry",
+    "registry": "0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E",
+    "verifier": "0x316aD5aeA2a010220107E676561507121E6356b5",
+    "judge": "0x8c9Acf52F7C8502e957a37231CE1B53097703312",
+    "challengeAdjudicator": "0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D",
+    "caseIds": {
+      "baselineAlreadyDecidable": "cx-1",
+      "upheldChallenge": "cx-2"
+    },
+    "baselineAlreadyDecidable": {
+      "createTx": "0x95d0d293284bc02d1676d831e79082f0b7a0c5da5ce4e24ff5cff65a0ba45bf8",
+      "baselineChildTx": "0x305a103af17fc9ebc5e235ce24cf138f9beae77f7cd3918f91ac5761fc219913",
+      "result": "BASELINE_ALREADY_DECIDABLE",
+      "outcome": "OUTCOME_A",
+      "bountyRefundedToSponsorCredit": true
+    },
+    "upheldChallenge": {
+      "createTx": "0x0c3343963093608add91a4d74b83601bfb85df9043fc6a35cab8aaaeaa85129f",
+      "baselineChildTx": "0xff3b37a1c347166c0357cde732b5b39055c7848eb0671c630c45cecb1282b194",
+      "baseline": "INSUFFICIENT_EVIDENCE",
+      "evidenceCommitTx": "0x08b57cc5037784df355c66e07bb6780d9c7ee2de21b660c42054b5664f8e7353",
+      "submissionId": "cs-1",
+      "evidenceRevealTx": "0xfd0d7b0c5ccdb70c1c2168d0cc9629bbfdb05bcc0f858f8e7b2b7880259d48cc",
+      "verification": "VERIFIED",
+      "challengeCommitTx": "0xeb6039fb59cefe027b48edd08149c9269681eb877c79b15fa50b0158e2219704",
+      "challengeId": "ch-1",
+      "challengeRevealTx": "0xf791274ca2f4bd3964d1bb643fa9080a87b0e4ab915e99492cb384c6a3c89523",
+      "challengeVerdict": "VERDICT_UPHELD",
+      "finalizeTx": "0x6ee4894f292b244ce1b00f1255425cfa47e6c682e2b3469c95e084cddaa1285c",
+      "closure": "CLOSED",
+      "outcome": "OUTCOME_A",
+      "winner": "0x2cd419603eba593074653930ddc4073d4fd8fc60",
+      "withdrawals": {
+        "bob": {
+          "tx": "0x67ac46d42a67e2bf3c5647f15ffc97182942149d7ac6c27e057f78ea2166db75",
+          "amountAtto": "1100000000000000",
+          "childTransferTx": "0x306eaf67d34685c1b5952ba2cf590f66d2b6627e23f53ecfd649c55dce667d0d",
+          "receiptStatus": "DISPATCHED_UNVERIFIED",
+          "childValueCredited": true
+        },
+        "carol": {
+          "tx": "0x10fb8f369f8dc7c2789e66e5d3303dd4f4be0a494c7e03d1f94ec03ad596ae3b",
+          "amountAtto": "100000000000000",
+          "childTransferTx": "0xe6f4461a8426f41b0d809f6b9bc59dc8b9bb093fa0de02280776ce58619f6be7",
+          "receiptStatus": "DISPATCHED_UNVERIFIED",
+          "childValueCredited": true
+        }
+      }
+    },
+    "readback": {
+      "chainId": 61999,
+      "totalCases": 2,
+      "casesClosed": 1,
+      "totalChallenges": 1,
+      "totalSubmissions": 1,
+      "totalDepositedAtto": "2200000000000000",
+      "bondEscrowAtto": "0",
+      "caseEscrowAtto": "0",
+      "claimableAtto": "1000000000000000",
+      "withdrawnAtto": "1200000000000000",
+      "withdrawalReceipts": 2,
+      "accountingBalanced": true,
+      "adminControls": false
+    },
+    "limitations": {
+      "materialOverturnCase": "NOT_EXECUTED_WITHIN_APPROVED_TWO_CASE_SCOPE",
+      "disallowedSourceRejection": "NOT_EXECUTED",
+      "retryableUnavailableSource": "NOT_EXECUTED"
+    }
   }
 }

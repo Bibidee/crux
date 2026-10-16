@@ -69,7 +69,46 @@
     "accountingBalanced": true,
     "independentReadback": true,
     "liveVerified": true,
-    "fundedLifecycleVerified": false,
+    "fundedLifecycleVerified": true,
+    "fundedLifecycleScope": "Two authorized funded cases on Studionet: cx-1 baseline-already-decidable negative path and cx-2 complete upheld-challenge lifecycle.",
+    "materialOverturnLifecycleVerified": false,
+    "disallowedSourceLifecycleVerified": false,
+    "retryableUnavailableSourceLifecycleVerified": false,
+    "liveWallets": {
+      "sponsor": "0x7c65ce913f5665c11f1219048112c84cd6cb2a4b",
+      "contributor": "0x2cd419603eba593074653930ddc4073d4fd8fc60",
+      "challenger": "0x8355d011e1fc874f3a91245711420d0c92cb3e47"
+    },
+    "liveEvidence": {
+      "negativeBaselineCase": {
+        "caseId": "cx-1",
+        "createTx": "0x95d0d293284bc02d1676d831e79082f0b7a0c5da5ce4e24ff5cff65a0ba45bf8",
+        "baselineChildTx": "0x305a103af17fc9ebc5e235ce24cf138f9beae77f7cd3918f91ac5761fc219913",
+        "result": "BASELINE_ALREADY_DECIDABLE",
+        "outcome": "OUTCOME_A"
+      },
+      "upheldChallengeCase": {
+        "caseId": "cx-2",
+        "createTx": "0x0c3343963093608add91a4d74b83601bfb85df9043fc6a35cab8aaaeaa85129f",
+        "baselineChildTx": "0xff3b37a1c347166c0357cde732b5b39055c7848eb0671c630c45cecb1282b194",
+        "evidenceCommitTx": "0x08b57cc5037784df355c66e07bb6780d9c7ee2de21b660c42054b5664f8e7353",
+        "evidenceRevealTx": "0xfd0d7b0c5ccdb70c1c2168d0cc9629bbfdb05bcc0f858f8e7b2b7880259d48cc",
+        "submissionId": "cs-1",
+        "verification": "VERIFIED",
+        "challengeCommitTx": "0xeb6039fb59cefe027b48edd08149c9269681eb877c79b15fa50b0158e2219704",
+        "challengeRevealTx": "0xf791274ca2f4bd3964d1bb643fa9080a87b0e4ab915e99492cb384c6a3c89523",
+        "challengeId": "ch-1",
+        "challengeVerdict": "VERDICT_UPHELD",
+        "finalizeTx": "0x6ee4894f292b244ce1b00f1255425cfa47e6c682e2b3469c95e084cddaa1285c",
+        "closure": "CLOSED",
+        "outcome": "OUTCOME_A",
+        "winner": "0x2cd419603eba593074653930ddc4073d4fd8fc60",
+        "bobWithdrawalTx": "0x67ac46d42a67e2bf3c5647f15ffc97182942149d7ac6c27e057f78ea2166db75",
+        "bobTransferTx": "0x306eaf67d34685c1b5952ba2cf590f66d2b6627e23f53ecfd649c55dce667d0d",
+        "carolWithdrawalTx": "0x10fb8f369f8dc7c2789e66e5d3303dd4f4be0a494c7e03d1f94ec03ad596ae3b",
+        "carolTransferTx": "0xe6f4461a8426f41b0d809f6b9bc59dc8b9bb093fa0de02280776ce58619f6be7"
+      }
+    },
     "productionPublished": true,
     "productionDeployment": {
       "id": "dpl_Ei6P1vAPVt6UAReMTFmcVbhKkAdF",

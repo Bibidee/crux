@@ -72,11 +72,12 @@
     "fundedLifecycleVerified": false,
     "productionPublished": true,
     "productionDeployment": {
-      "id": "dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC",
-      "url": "https://frontend-4d2ji2d0g-bibidees-projects.vercel.app",
+      "id": "dpl_Ei6P1vAPVt6UAReMTFmcVbhKkAdF",
+      "url": "https://frontend-34mj2jxpw-bibidees-projects.vercel.app",
       "alias": "https://crux-end.vercel.app",
       "target": "production",
-      "status": "READY"
+      "status": "READY",
+      "sourceCommit": "1f59ee452b73f919706d1a738293b250666d01ce"
     },
     "getStatsReadback": {
       "accounting_balanced": true,

@@ -6,7 +6,7 @@ This is a checklist, not a self-awarded score. Fill the **live evidence** column
 
 The four-contract Challenge V2.2 set is deployed on Studionet chain `61999` and independently verified against the exact source hashes in [`../deployments/challenge-v2-2-studionet.json`](../deployments/challenge-v2-2-studionet.json). Its Registry is [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E), with Evidence Verifier [`0x316aD5aeA2a010220107E676561507121E6356b5`](https://explorer-studio.genlayer.com/address/0x316aD5aeA2a010220107E676561507121E6356b5), Closure Judge [`0x8c9Acf52F7C8502e957a37231CE1B53097703312`](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312), and Challenge Adjudicator [`0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D`](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D). The five setup transactions finalized successfully; `get_stats` readback reports `components_configured=true`, `admin_controls=false`, `accounting_balanced=true`, and zero cases and escrow.
 
-Production is published at [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge) as Vercel deployment [`dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC`](https://vercel.com/bibidees-projects/frontend/Jeoc5DyPJCaxt5Zg4661Tz9a2vtC), status `READY`, and the public bundle contains the exact V2.2 Registry address. A funded three-wallet V2.2 lifecycle has not yet been executed, so no V2.2 case, submission, verification, closure, or withdrawal hashes are claimed here.
+Production is published at [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge) as Vercel deployment [`dpl_Ei6P1vAPVt6UAReMTFmcVbhKkAdF`](https://vercel.com/bibidees-projects/frontend/Ei6P1vAPVt6UAReMTFmcVbhKkAdF), status `READY`, and the public bundle contains the exact V2.2 Registry address. A funded three-wallet V2.2 lifecycle has not yet been executed, so no V2.2 case, submission, verification, closure, or withdrawal hashes are claimed here.
 
 Current V2.2 setup transactions:
 
@@ -29,7 +29,7 @@ Current V2.2 setup transactions:
 | Accounting | Pull credits + exposed conservation invariant | Final V2.2 Registry `get_stats` on chain 61999: `accounting_balanced=true`, `admin_controls=false`, zeroed initial escrows |
 | Frontend integration | Create, browse, detail, commit/reveal, activity/withdraw, explorer links; EIP-1193 wallet | https://crux-end.vercel.app is live and verified against the current Registry |
 | Network handling | UI forces chain 61999; deploy script refuses other chain IDs | Setup transactions and final stats verified on chain 61999; funded lifecycle `NOT_STARTED` |
-| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | CI run `38854054041` on `cacecc8c5c15bcc5664713ec5216f6f1d573ea11` concluded `success`; local final suite is recorded below |
+| Engineering | direct tests, opt-in integration smoke, docs, deployment manifest, typed frontend | CI run `38858256931` on `1f59ee452b73f919706d1a738293b250666d01ce` concluded `success`; local final suite is recorded below |
 
 ## Final command evidence
 
@@ -51,7 +51,7 @@ EvidenceVerifier: [0x316aD5aeA2a010220107E676561507121E6356b5](https://explorer-
 ClosureJudge: [0x8c9Acf52F7C8502e957a37231CE1B53097703312](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312) — tx `0x97e7a2457e7a3d0e60be141e4c9d4045f038e80375984fbdd2cdf417fe13aca9`
 ChallengeAdjudicator: [0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D) — tx `0x9e8438ba7adb81415cf61609d57bcdbc1060994897157f09902ef3eb8b4f37a7`
 Component binding: tx `0x7980e97ca9bda70f5e490fd662f1499cc0851a87e1a3f96f1d7bcefb048dabb1`
-Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC`, verified READY.
+Frontend: [https://crux-end.vercel.app](https://crux-end.vercel.app), Vercel production deployment `dpl_Ei6P1vAPVt6UAReMTFmcVbhKkAdF`, verified READY from source commit `1f59ee452b73f919706d1a738293b250666d01ce`.
 ```
 
 ## Live demonstration transactions

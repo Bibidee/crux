@@ -11,9 +11,9 @@ This repository is locked to **GenLayer Studionet**:
 - explorer: `https://explorer-studio.genlayer.com`
 - browser wallet: injected **EIP-1193 only** (`window.ethereum`), no Snaps
 
-### Challenge V2 safety notice
+### Challenge V2 deployment status
 
-Crux V1 remains the existing live three-contract product. The deployed Challenge V2 Registry is superseded by a security defect in challenge evidence invalidation; do not create or fund V2 cases. This source tree now defaults all V2 writes off and preserves read-only access. That safeguard reaches `crux-end.vercel.app` only after a separately approved frontend publication; no Vercel environment or production deployment is changed here. The corrected V2.1 contract set is deployed and independently verified, but the existing frontend is not configured to it. See [`docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md`](docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md).
+Crux V1 remains the existing live three-contract product. The current Challenge V2.2 four-contract set is deployed and independently verified on Studionet, and the `/challenge` route on `crux-end.vercel.app` is configured to its Registry. Older V2 and V2.1 addresses are historical and must not be used for new cases. The contract-layer verification is complete; the funded two-wallet V2.2 lifecycle is still pending and is tracked explicitly in [`docs/LIVE_DEMO.md`](docs/LIVE_DEMO.md) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md).
 
 The V2.1 release hardens the full challenge lifecycle with four bounded pending slots, permissionless expiry, admission through the one-hour deadline, a full post-commit reveal timeout, centralized concurrent-review reconciliation, recovery deadlines that cannot shorten finality, per-round challenge accounting, exact target-bound adjudication, and one-shot state-changing wallet writes. Its four contracts are deployed and independently verified on Studionet; the existing frontend remains unchanged until a separate frontend publication is authorized.
 
@@ -44,15 +44,11 @@ Crux deliberately separates three responsibilities.
 
 This avoids collapsing two different questions into one LLM call: **is the fact established?** and **does the fact resolve the case?**
 
-## Challenge V2 (deployed; remediation required)
+## Challenge V2.2 (deployed and production-wired)
 
-Challenge V2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the component boundaries, threat model, demo instructions, and deployment checklist are in [`docs/CHALLENGE_V2.md`](docs/CHALLENGE_V2.md).
+Challenge V2.2 adds a provisional verdict and a bounded counterevidence period. A separate challenge adjudicator checks whether admissible, source-supported counterevidence materially changes the original conclusion. Bounty and refundable bonds remain escrowed until the approved finality point; an overturn to insufficient evidence reopens the case without releasing the bounty. The owner-approved economic rules are documented in [`docs/CHALLENGE_V2_SPEC.md`](docs/CHALLENGE_V2_SPEC.md), and the current deployment record is [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json).
 
-The four V2 contracts are deployed on Studionet and the production frontend is configured to the V2 Registry; setup receipts and read-only verification are recorded in [`deployments/challenge-v2-studionet.json`](deployments/challenge-v2-studionet.json) and [`docs/CHALLENGE_V2_RELEASE_EVIDENCE.md`](docs/CHALLENGE_V2_RELEASE_EVIDENCE.md). The Registry has no cases or funds. A security audit found that an overturned provisional submission remains in the active evidence graph when an insufficient-evidence challenge reopens a case. A local fix and regression test are present, but the deployed contract does not include that fix. Do not create funded V2 cases or represent V2 as submission-ready until a corrected deployment is separately authorized and verified. The existing V1 three-contract trust architecture, addresses, and live flow remain unchanged.
-
-The initial V2 remediation did not cover a challenge targeting an earlier decisive item: the adjudicator lacked the selected target ID and the Registry could remove a different fact. V2.1 fixes both issues and is deployed as a separate contract set. The V2 writes-off setting in this repository takes effect on `crux-end.vercel.app` only after a separately approved publication; no Vercel publication was performed by the V2.1 contract deployment.
-
-V2.1 deployment evidence and the exact setup transaction hashes are recorded in [`docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md`](docs/CHALLENGE_V2_1_RELEASE_CANDIDATE.md) and [`deployments/challenge-v2-1-studionet.json`](deployments/challenge-v2-1-studionet.json): Registry `0xA258Ef6f5e2ACB3512c37ACC71544D94Caa7520c`, Evidence Verifier `0x6417c5523fE978ff324E65BC226Ce376C5986481`, Closure Judge `0xF49904f8BE76A0B7cF51580268f219d7C7480330`, and Challenge Adjudicator `0xdDEb644B00f988f684F4F7da9c655e1a458de494`.
+The V2.2 setup receipts and independent readback are recorded in [`deployments/challenge-v2-2-studionet.json`](deployments/challenge-v2-2-studionet.json) and [`docs/REVIEW_EVIDENCE.md`](docs/REVIEW_EVIDENCE.md). The Registry currently has no cases or funds, so the funded two-wallet lifecycle remains an explicit next verification step rather than an implied result. The historical V2 and V2.1 deployments remain documented for audit traceability but are not the production target.
 
 ## Main flow
 

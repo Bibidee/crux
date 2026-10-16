@@ -2,6 +2,19 @@
 
 The final release should demonstrate the whole trust path with two funded Studio wallets and real explorer links. Do not substitute mocks or screenshots of local state.
 
+## Current Challenge V2.2 deployment
+
+The current Challenge V2 route is wired to the independently verified Studionet deployment below:
+
+- Registry: [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E)
+- Evidence Verifier: [`0x316aD5aeA2a010220107E676561507121E6356b5`](https://explorer-studio.genlayer.com/address/0x316aD5aeA2a010220107E676561507121E6356b5)
+- Closure Judge: [`0x8c9Acf52F7C8502e957a37231CE1B53097703312`](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312)
+- Challenge Adjudicator: [`0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D`](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D)
+- Network: Studionet, chain `61999`, RPC `https://studio.genlayer.com/api`
+- Frontend: [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge)
+
+All five deployment writes finalized successfully, component bindings and source hashes were independently read back, and the production frontend is `READY`. The funded two-wallet V2.2 lifecycle is still pending; the historical `cx-6` hashes below belong to the earlier V1 Registry and must not be presented as V2.2 evidence.
+
 ## Suggested case
 
 Use the official GenLayer Networks documentation as the public source because it is easy for a reviewer to inspect.

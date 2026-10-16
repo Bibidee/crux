@@ -2,6 +2,12 @@
 
 This is a checklist, not a self-awarded score. Fill the **live evidence** column after deployment.
 
+## Current Challenge V2.2 release snapshot
+
+The four-contract Challenge V2.2 set is deployed on Studionet chain `61999` and independently verified against the exact source hashes in [`../deployments/challenge-v2-2-studionet.json`](../deployments/challenge-v2-2-studionet.json). Its Registry is [`0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E`](https://explorer-studio.genlayer.com/address/0x96F27D5B78F3c98db6eE5C6d6DA3B4dCCa050F2E), with Evidence Verifier [`0x316aD5aeA2a010220107E676561507121E6356b5`](https://explorer-studio.genlayer.com/address/0x316aD5aeA2a010220107E676561507121E6356b5), Closure Judge [`0x8c9Acf52F7C8502e957a37231CE1B53097703312`](https://explorer-studio.genlayer.com/address/0x8c9Acf52F7C8502e957a37231CE1B53097703312), and Challenge Adjudicator [`0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D`](https://explorer-studio.genlayer.com/address/0xeBFd81ae1e1DB3011439e38263E7971aCc6a306D). The five setup transactions finalized successfully; `get_stats` readback reports `components_configured=true`, `admin_controls=false`, `accounting_balanced=true`, and zero cases and escrow.
+
+Production is published at [`https://crux-end.vercel.app/challenge`](https://crux-end.vercel.app/challenge) as Vercel deployment [`dpl_Jeoc5DyPJCaxt5Zg4661Tz9a2vtC`](https://vercel.com/bibidees-projects/frontend/Jeoc5DyPJCaxt5Zg4661Tz9a2vtC), status `READY`, and the public bundle contains the exact V2.2 Registry address. A funded two-wallet V2.2 lifecycle has not yet been executed, so no V2.2 case, submission, verification, closure, or withdrawal hashes are claimed here.
+
 | Review area | Repository evidence | Live evidence before submission |
 |---|---|---|
 | GenLayer is consequential | Bounty settlement depends on source-grounded semantic consensus; no backend verdict path | `cx-6` closed through real baseline, verifier, closure consensus; payout withdrawn |
